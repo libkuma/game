@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>금서고의 카드 - KDC 책 카드 배틀</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0a0604;color:#eadcbc;font-family:"Noto Serif KR","Nanum Myeongjo",Georgia,serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;touch-action:none}
+#hud{position:fixed;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:5;text-shadow:0 1px 6px #000}
+#bar{width:min(760px,100%);display:flex;justify-content:space-between;align-items:center;padding:8px 12px;gap:8px}
+#status{font-size:13px;color:#d2bd8c;line-height:1.4}
+#scaletxt{font-size:13px;color:#ffe3a0;text-align:center;background:rgba(10,6,3,.55);border:1px solid #5a4024;border-radius:12px;padding:3px 12px}
+.right{display:flex;gap:8px;align-items:center;pointer-events:auto}
+#ink{font-size:15px;background:rgba(10,6,3,.65);border:1px solid #5a4024;border-radius:14px;padding:3px 11px;color:#f2e6c6}
+#mute{background:rgba(10,6,3,.65);border:1px solid #5a4024;color:#eadcbc;border-radius:50%;width:30px;height:30px;cursor:pointer}
+#narr{min-height:22px;font-size:14px;font-style:italic;color:#ffdf94;text-align:center;padding:0 12px;text-shadow:0 0 10px rgba(255,160,50,.55),0 1px 4px #000}
+#hint{font-size:12px;color:#c9b48a;text-align:center;padding:2px 12px;min-height:18px}
+#bellBtn{position:fixed;right:14px;bottom:14px;z-index:6;background:linear-gradient(#d3a444,#80581c);color:#fff3d2;border:2px solid #3b2a14;border-radius:30px;padding:12px 20px;font-family:inherit;font-size:15px;cursor:pointer;box-shadow:0 4px 14px #000a;letter-spacing:.06em}
+#bellBtn:disabled{filter:grayscale(.8) brightness(.5);cursor:not-allowed}
+#bellBtn:not(:disabled):hover{filter:brightness(1.15)}
+.lbl{position:fixed;z-index:4;pointer-events:none;font-size:12px;color:#f2e6c6;background:rgba(10,6,3,.7);border:1px solid #5a4024;border-radius:10px;padding:1px 8px;transform:translate(-50%,-50%);white-space:nowrap}
+#info{position:fixed;z-index:20;max-width:270px;background:rgba(14,8,4,.94);border:1px solid #7a5a32;border-radius:8px;padding:8px 11px;font-size:12px;line-height:1.55;pointer-events:none;display:none}
+#info b{color:#ffd88a}
+.pop3{position:fixed;z-index:30;font-size:26px;font-weight:900;pointer-events:none;transform:translate(-50%,-50%);animation:pop3 .9s forwards;text-shadow:0 0 5px #000,0 0 10px #000}
+@keyframes pop3{to{transform:translate(-50%,-150%);opacity:0}}
+#ov{position:fixed;inset:0;background:rgba(5,3,2,.9);z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px;overflow:auto}
+#ov h1{font-size:clamp(26px,6vw,42px);margin:0 0 6px;color:#ffd88a;text-shadow:0 0 20px #ff9a2a88;letter-spacing:.08em}
+#ov p{max-width:560px;line-height:1.7;color:#dccda8;font-size:14px;margin:6px 0}
+#ov .rules{text-align:left;background:#150d07;border:1px solid #4a3220;border-radius:8px;padding:10px 18px;font-size:13px;list-style:none;max-width:580px;line-height:1.6;margin:8px 0}
+#ov .rules li{margin:3px 0}
+#ov .kdc{font-size:12px;color:#c9b48a;background:#150d07;border:1px solid #4a3220;border-radius:8px;padding:6px 12px;max-width:580px;line-height:1.7}
+.btn{margin-top:14px;background:linear-gradient(#a57b45,#6b4824);color:#fff3d6;border:2px solid #3b2a14;border-radius:8px;padding:10px 28px;font-size:16px;font-family:inherit;cursor:pointer;letter-spacing:.1em}
+.btn:hover{filter:brightness(1.15)}
+.rewards{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.rw{width:160px;cursor:pointer;transition:.15s;font-size:11px;color:#cdbb92}
+.rw canvas{width:160px;height:224px;border-radius:12px;box-shadow:0 4px 14px #000}
+.rw:hover{transform:translateY(-8px) scale(1.05)}
+.rw:hover canvas{box-shadow:0 0 22px #ffd36a}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <div id="bar">
+    <div id="status"></div>
+    <div id="scaletxt"></div>
+    <div class="right"><div id="ink">🖋️ 0</div><button id="mute" title="소리">🔊</button></div>
+  </div>
+  <div id="narr"></div>
+  <div id="hint"></div>
+</div>
+<button id="bellBtn" disabled>🔔 종 치기</button>
+<div id="labels"></div>
+<div id="info"></div>
+<div id="ov"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+if(typeof THREE==='undefined'){
+  document.body.innerHTML='<p style="color:#eee;padding:30px;font-family:sans-serif;line-height:1.7">3D 라이브러리(three.js)를 불러오지 못했습니다.<br>인터넷 연결을 확인한 뒤 새로고침해 주세요.</p>';
+  throw new Error('three.js missing');
+}
+
+/* =========================================================
+   게임 데이터 : 책 카드
+   - 코스트  = KDC 대분류(백의 자리) 숫자 0~9
+   - 공격력  = 쪽수 ÷ 50 (내림)       → 50쪽당 1
+   - 체력    = 쪽수 ÷ 100 (반올림, 1~6)
+   ※ 쪽수는 판본마다 다르므로 대략값이며, 일부는 밸런스를 위해 조정했습니다.
+========================================================= */
+const KDC_NAME=['총류','철학','종교','사회과학','자연과학','기술과학','예술','언어','문학','역사'];
+const SIG = {
+  airborne:   {icon:'🪽', name:'비행',       desc:'상대 카드를 무시하고 상대 본체를 직접 공격한다. (도약 카드는 막을 수 있음)'},
+  quills:     {icon:'🪡', name:'가시 갑옷',   desc:'이 카드를 공격한 카드는 1 피해를 입는다.'},
+  leap:       {icon:'🦘', name:'도약',       desc:'비행 카드의 공격을 막아낸다.'},
+  bifurcated: {icon:'⑂',  name:'양날 공격',   desc:'정면이 아니라 양옆 칸을 동시에 공격한다.'},
+  deathtouch: {icon:'☠️', name:'죽음의 손길', desc:'피해를 입힌 카드를 즉시 죽인다.'}
+};
+const BOOKS = {
+  // id: {title, author, cls(KDC 대분류), pages, art, sigils}
+  blank:       {title:'백지 노트',            author:'(아직 쓰이지 않은 책)', cls:0, pages:0,   art:'📓', sigils:[]},
+  saemteo:     {title:'월간 샘터',            author:'샘터사',              cls:0, pages:130, art:'📰', sigils:[]},
+  scrapbook:   {title:'신문 스크랩북',         author:'—',                  cls:0, pages:150, art:'🗞️', sigils:[]},
+  libguide:    {title:'도서관 이용 안내서',     author:'—',                  cls:0, pages:60,  art:'🗂️', sigils:[]},
+  socrates:    {title:'소크라테스의 변명',      author:'플라톤',              cls:1, pages:130, art:'🏺', sigils:['deathtouch']},
+  dodeok:      {title:'도덕경',               author:'노자',               cls:1, pages:150, art:'☯️', sigils:['leap']},
+  meditations: {title:'명상록',               author:'마르쿠스 아우렐리우스', cls:1, pages:230, art:'🏛️', sigils:['quills']},
+  heart:       {title:'반야심경',             author:'—',                  cls:2, pages:100, art:'🪷', sigils:['leap']},
+  dhammapada:  {title:'법구경',               author:'—',                  cls:2, pages:250, art:'📿', sigils:['leap']},
+  justice:     {title:'정의란 무엇인가',       author:'마이클 샌델',          cls:3, pages:380, art:'⚖️', sigils:[]},
+  prince:      {title:'군주론',               author:'마키아벨리',           cls:3, pages:250, art:'👑', sigils:['quills']},
+  hawking:     {title:'시간의 역사',           author:'스티븐 호킹',          cls:4, pages:280, art:'🌌', sigils:['airborne']},
+  kuhn:        {title:'과학혁명의 구조',       author:'토머스 쿤',            cls:4, pages:300, art:'🔬', sigils:[]},
+  donguibogam: {title:'동의보감 (축약본)',     author:'허준',               cls:5, pages:400, art:'🌿', sigils:[]},
+  cooking:     {title:'요리 교과서',           author:'—',                  cls:5, pages:300, art:'🍳', sigils:[]},
+  carmanual:   {title:'자동차 정비 매뉴얼',     author:'—',                  cls:5, pages:450, art:'🔧', sigils:['quills']},
+  gombrich:    {title:'서양미술사',            author:'E.H. 곰브리치',        cls:6, pages:650, art:'🎨', sigils:['leap']},
+  picasso:     {title:'피카소 화집',           author:'—',                  cls:6, pages:500, art:'🖼️', sigils:['bifurcated']},
+  dictionary:  {title:'표준국어대사전 (축약)',  author:'국립국어원',           cls:7, pages:650, art:'📖', sigils:['leap']},
+  english:     {title:'영어 문법 총정리',      author:'—',                  cls:7, pages:400, art:'🔤', sigils:[]},
+  hunmin:      {title:'훈민정음 해례본',       author:'세종대왕',            cls:7, pages:100, art:'🖋️', sigils:['deathtouch']},
+  littleprince:{title:'어린 왕자',            author:'생텍쥐페리',           cls:8, pages:130, art:'🌹', sigils:['airborne']},
+  potter:      {title:'해리 포터와 마법사의 돌', author:'J.K. 롤링',           cls:8, pages:330, art:'🧙', sigils:['airborne']},
+  crime:       {title:'죄와 벌',              author:'도스토옙스키',          cls:8, pages:650, art:'🪓', sigils:[]},
+  sapiens:     {title:'사피엔스',             author:'유발 하라리',          cls:9, pages:650, art:'🦴', sigils:[]},
+  nanjung:     {title:'난중일기',             author:'이순신',              cls:9, pages:400, art:'⚔️', sigils:['deathtouch']},
+  guns:        {title:'총, 균, 쇠',           author:'재러드 다이아몬드',     cls:9, pages:700, art:'🌍', sigils:[]}
+};
+const atkOf=b=>Math.floor(b.pages/50);
+const hpOf=b=>Math.max(1,Math.min(6,Math.round(b.pages/100)));
+const ALL_IDS=Object.keys(BOOKS);
+const POOLS=[
+  ALL_IDS.filter(id=>atkOf(BOOKS[id])<=4).concat(['blank','blank']),
+  ALL_IDS.filter(id=>{const a=atkOf(BOOKS[id]);return a>=2&&a<=8;}),
+  ALL_IDS.filter(id=>atkOf(BOOKS[id])>=4)
+];
+const FOES = ['신입 유령 사서','수석 유령 사서','금서고의 관장'];
+const FOE_COL = [0xaec8ff,0xb7f0c8,0xffa0a0];
+const WIN_AT = 15;
+const maxInk = turn => Math.min(10,turn+2);
+
+const LINES = {
+  start:['"쉿. 여기는 도서관이네. 조용히 겨루지."','"어떤 분류의 책을 꺼내 들겠나?"'],
+  play:['"훌륭한 장서로군."','"좋은 책이야. 쪽수도 두둑하고."','"흠... 그런 책을 꺼내다니."'],
+  bell:['"종이 울렸군. 반납 시간이야."','"자, 책장을 넘겨 보세."'],
+  enemy:['"이번엔 내 서가 차례일세."','"서가의 책들이 깨어난다."'],
+  win:['"...제법이군. 새 장서를 골라 가게."','"이 서고에서 보기 드문 실력이야."'],
+  lose:['"연체료는 목숨이라네..."','"다시 앉게. 아직 대출은 끝나지 않았어."']
+};
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+let uid=0;
+const mk = id => {
+  const b=BOOKS[id], hp=hpOf(b);
+  return {id,uid:++uid,name:b.title,author:b.author,cls:b.cls,pages:b.pages,art:b.art,
+          atk:atkOf(b),hp,maxhp:hp,cost:{t:b.cls===0?'free':'ink',n:b.cls},sigils:[...b.sigils]};
+};
+const costTxt = c => c.cost.n===0?'무료 (0)':'🖋️ 잉크 ×'+c.cost.n;
+
+/* =========================================================
+   사운드
+========================================================= */
+let AC=null, muted=false;
+function snd(f=220,d=.1,type='square',v=.05,slide=0){
+  if(muted) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type; o.frequency.setValueAtTime(f,AC.currentTime);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),AC.currentTime+d);
+    g.gain.setValueAtTime(v,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+d);
+  }catch(e){}
+}
+const sHit=()=>snd(160,.18,'sawtooth',.08,-100);
+const sPlace=()=>snd(300,.08,'triangle',.07,120);
+const sBell=()=>{snd(880,.6,'sine',.1);snd(1320,.5,'sine',.05)};
+const sDie=()=>snd(120,.3,'square',.06,-80);
+const sDmg=()=>snd(90,.3,'sawtooth',.1,-30);
+const sFlip=()=>snd(500,.07,'triangle',.05,200);
+
+/* =========================================================
+   three.js 기본 설정
+========================================================= */
+const V3=THREE.Vector3;
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+stage.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x090503);
+scene.fog=new THREE.Fog(0x090503,16,38);
+const camera=new THREE.PerspectiveCamera(46,1,0.1,90);
+const LOOK=new V3(0,0.6,-1.2), DIR=new V3(0,7.9,10.2);
+let camMul=1, mx=0, my=0, camShake=0;
+function fit(){
+  const w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+  const half=Math.tan(THREE.MathUtils.degToRad(23))*DIR.length()*camera.aspect;
+  camMul=Math.max(1,5.5/half);
+}
+window.addEventListener('resize',fit);
+
+/* ---------- 텍스처 도우미 ---------- */
+function canvasTex(c,repeat){
+  const t=new THREE.CanvasTexture(c);
+  t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  if(repeat){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(repeat[0],repeat[1]); }
+  return t;
+}
+function makeWood(base,dark,seams){
+  const w=512,h=512,c=document.createElement('canvas'); c.width=w;c.height=h;
+  const g=c.getContext('2d'); g.fillStyle=base; g.fillRect(0,0,w,h);
+  for(let i=0;i<280;i++){
+    const y=Math.random()*h; g.strokeStyle=`rgba(${dark},${Math.random()*.28})`; g.lineWidth=Math.random()*3+.5;
+    g.beginPath(); g.moveTo(0,y);
+    for(let x=0;x<=w;x+=32) g.lineTo(x,y+Math.sin(x*.02+i)*3+(Math.random()-.5)*1.5);
+    g.stroke();
+  }
+  for(let i=0;i<seams;i++){ g.fillStyle='rgba(0,0,0,.4)'; g.fillRect(0,i*h/seams,w,3); }
+  return c;
+}
+function makeFelt(){
+  const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+  g.fillStyle='#21402f'; g.fillRect(0,0,256,256);
+  for(let i=0;i<6000;i++){ g.fillStyle=`rgba(${Math.random()<.5?'0,0,0':'120,200,150'},${Math.random()*.08})`; g.fillRect(Math.random()*256,Math.random()*256,2,2); }
+  return c;
+}
+function rr(g,x,y,w,h,r){
+  g.beginPath(); g.moveTo(x+r,y); g.lineTo(x+w-r,y); g.quadraticCurveTo(x+w,y,x+w,y+r);
+  g.lineTo(x+w,y+h-r); g.quadraticCurveTo(x+w,y+h,x+w-r,y+h); g.lineTo(x+r,y+h);
+  g.quadraticCurveTo(x,y+h,x,y+h-r); g.lineTo(x,y+r); g.quadraticCurveTo(x,y,x+r,y); g.closePath();
+}
+const EMOJI='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const SERIF='"Noto Serif KR","Nanum Myeongjo",Georgia,serif';
+// KDC 대분류별 책 표지색
+const CLS_COL=['#6e6e78','#5a4a8a','#8a6a2a','#2f5f8a','#2a7a6a','#7a5a2a','#9a3a5a','#4a6a2a','#8a2a2a','#5a3a1a'];
+
+/* ---------- 책 카드 앞면 그리기 (3D 텍스처 + 보상 화면 공용) ---------- */
+function drawFace(cv,c,enemy){
+  const W=cv.width,H=cv.height,g=cv.getContext('2d');
+  g.clearRect(0,0,W,H); g.save(); rr(g,0,0,W,H,28); g.clip();
+  const gr=g.createLinearGradient(0,0,W,H);
+  if(enemy){gr.addColorStop(0,'#d1c3a8');gr.addColorStop(1,'#8c7a63');}
+  else{gr.addColorStop(0,'#f3e5ba');gr.addColorStop(1,'#cdb27b');}
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  for(let i=0;i<500;i++){ g.fillStyle=`rgba(90,60,20,${Math.random()*.07})`; g.fillRect(Math.random()*W,Math.random()*H,2,2); }
+  // 책등 띠 (KDC 분류색)
+  g.fillStyle=CLS_COL[c.cls]; g.fillRect(0,0,28,H);
+  g.fillStyle='rgba(255,255,255,.25)'; g.fillRect(24,0,3,H);
+  g.strokeStyle='#4a3216'; g.lineWidth=8; rr(g,8,8,W-16,H-16,22); g.stroke();
+  // 코스트 배지 (KDC 대분류 맨 앞자리)
+  g.fillStyle='#1d120a'; g.beginPath(); g.arc(66,58,32,0,Math.PI*2); g.fill();
+  g.strokeStyle='#d9b45a'; g.lineWidth=4; g.stroke();
+  g.fillStyle='#ffe6a0'; g.font=`900 44px ${SERIF}`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(c.cost.n,66,60);
+  // KDC 분류 라벨
+  g.fillStyle='#2a1c0c'; g.textAlign='right'; g.font=`bold 22px ${SERIF}`; g.fillText(`KDC ${c.cls}00`,W-26,48);
+  g.font=`20px ${SERIF}`; g.fillStyle='#4a3216'; g.fillText(KDC_NAME[c.cls],W-26,74);
+  // 제목 (길면 글자 크기 축소)
+  g.textAlign='center'; g.fillStyle='#2a1c0c';
+  let fs=34; g.font=`bold ${fs}px ${SERIF}`;
+  while(g.measureText(c.name).width>W-70&&fs>16){ fs--; g.font=`bold ${fs}px ${SERIF}`; }
+  g.fillText(c.name,W/2+8,118);
+  g.font=`italic 19px ${SERIF}`; g.fillStyle='#5a4226'; g.fillText(c.author,W/2+8,146);
+  // 그림 영역
+  g.fillStyle='rgba(60,35,10,.2)'; rr(g,44,162,W-72,116,12); g.fill();
+  g.strokeStyle='rgba(60,35,10,.55)'; g.lineWidth=3; rr(g,44,162,W-72,116,12); g.stroke();
+  g.font=`88px ${EMOJI}`; g.fillStyle='#000'; g.fillText(c.art,W/2+8,222);
+  // 쪽수
+  g.font=`bold 24px ${SERIF}`; g.fillStyle='#2a1c0c'; g.fillText(`📄 ${c.pages}쪽`,W/2+8,302);
+  // 능력
+  if(c.sigils.length){
+    g.font=`34px ${EMOJI}`; g.fillText(c.sigils.map(s=>SIG[s].icon).join(' '),W/2+8,336);
+    g.font=`bold 19px ${SERIF}`; g.fillStyle='#4a3216'; g.fillText(c.sigils.map(s=>SIG[s].name).join(' · '),W/2+8,364);
+  }
+  // 공격력 / 체력
+  g.font=`900 66px ${SERIF}`; g.textBaseline='alphabetic'; g.fillStyle='#2a1c0c'; g.textAlign='left'; g.fillText(c.atk,44,H-26);
+  g.textAlign='right'; g.fillStyle=c.hp<c.maxhp?'#b02020':'#2a1c0c'; g.fillText(c.hp,W-26,H-26);
+  g.restore();
+}
+function drawBack(cv){
+  const W=cv.width,H=cv.height,g=cv.getContext('2d');
+  g.clearRect(0,0,W,H); g.save(); rr(g,0,0,W,H,28); g.clip();
+  const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#4b2616'); gr.addColorStop(1,'#26120a');
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
+  g.strokeStyle='#c9a24a'; g.lineWidth=6; rr(g,14,14,W-28,H-28,18); g.stroke();
+  g.lineWidth=2; rr(g,26,26,W-52,H-52,12); g.stroke();
+  g.textAlign='center'; g.textBaseline='middle'; g.font=`110px ${EMOJI}`; g.fillText('📖',W/2,H/2);
+  g.restore();
+}
+
+/* =========================================================
+   장면 구성 : 도서관
+========================================================= */
+scene.add(new THREE.HemisphereLight(0xffe0a8,0x1e1008,0.6));
+const lamp=new THREE.SpotLight(0xffdca4,1.7,50,0.85,0.55,1);
+lamp.position.set(0,12,4); lamp.target.position.set(0,0,-1); scene.add(lamp,lamp.target);
+lamp.castShadow=true; lamp.shadow.mapSize.set(2048,2048); lamp.shadow.bias=-0.0006;
+const moon=new THREE.DirectionalLight(0x6f8bd0,0.3); moon.position.set(-8,8,-6); scene.add(moon);
+
+// --- 바닥 / 탁자
+const floorTex=canvasTex(makeWood('#2a180c','10,5,2',0),[8,8]);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({map:floorTex,roughness:.8}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-3; floor.receiveShadow=true; scene.add(floor);
+
+const woodTex=canvasTex(makeWood('#5b3a1e','30,15,5',4),[3,3]);
+const woodMat=new THREE.MeshStandardMaterial({map:woodTex,roughness:.6,metalness:.05});
+const table=new THREE.Mesh(new THREE.BoxGeometry(17,1,15),woodMat);
+table.position.set(0,-0.5,0.2); table.receiveShadow=true; table.castShadow=true; scene.add(table);
+[[-7.6,-6.8],[7.6,-6.8],[-7.6,7.2],[7.6,7.2]].forEach(([x,z])=>{
+  const leg=new THREE.Mesh(new THREE.BoxGeometry(1,2.1,1),woodMat); leg.position.set(x,-2,z); leg.castShadow=true; scene.add(leg);
+});
+const leather=new THREE.Mesh(new THREE.PlaneGeometry(9.4,8.2),new THREE.MeshStandardMaterial({color:0x4a1f14,roughness:.8}));
+leather.rotation.x=-Math.PI/2; leather.position.set(0,0.002,-0.85); leather.receiveShadow=true; scene.add(leather);
+const feltTex=canvasTex(makeFelt(),[4,4]);
+const felt=new THREE.Mesh(new THREE.PlaneGeometry(9.0,7.8),new THREE.MeshStandardMaterial({map:feltTex,roughness:1}));
+felt.rotation.x=-Math.PI/2; felt.position.set(0,0.004,-0.85); felt.receiveShadow=true; scene.add(felt);
+
+// --- 책장 (InstancedMesh로 수천 권의 책)
+const shelfWoodMat=new THREE.MeshStandardMaterial({color:0x2e1b0e,roughness:.8});
+const bookMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({roughness:.75,metalness:.05}),4200);
+scene.add(bookMesh);
+let bookCount=0;
+const BOOK_COLS=[0x6b1f1f,0x1f3b5a,0x2c4a2a,0x5a3a1a,0x3a2058,0x7a5a1c,0x243a3a,0x4a1a2a,0x8a6a3a,0x1c2c44,0x5a2a14,0x34502e];
+function shelfUnit(x,z,rotY,w,rows){
+  const frame=new THREE.Group(); frame.position.set(x,-3,z); frame.rotation.y=rotY; scene.add(frame); frame.updateMatrixWorld(true);
+  const H=rows*1.85+0.2, D=1.2;
+  const back=new THREE.Mesh(new THREE.BoxGeometry(w,H,0.1),shelfWoodMat); back.position.set(0,H/2,-D/2); frame.add(back);
+  [-1,1].forEach(s=>{ const side=new THREE.Mesh(new THREE.BoxGeometry(0.14,H,D),shelfWoodMat); side.position.set(s*(w/2),H/2,0); frame.add(side); });
+  const dummy=new THREE.Object3D(), col=new THREE.Color();
+  for(let r=0;r<=rows;r++){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,0.1,D),shelfWoodMat); b.position.set(0,0.05+r*1.85,0); frame.add(b);
+    if(r===rows) break;
+    let px=-w/2+0.15;
+    while(px<w/2-0.2 && bookCount<4200){
+      const th=0.12+Math.random()*0.16, hg=1.05+Math.random()*0.55, dp=0.7+Math.random()*0.3;
+      if(Math.random()<0.04){ px+=0.25+Math.random()*0.3; continue; }
+      const lean=Math.random()<0.05?(Math.random()-.5)*0.4:0;
+      dummy.position.set(px+th/2,0.1+r*1.85+hg/2,-0.1);
+      dummy.rotation.set(0,0,lean); dummy.scale.set(th,hg,dp); dummy.updateMatrix();
+      bookMesh.setMatrixAt(bookCount,frame.matrixWorld.clone().multiply(dummy.matrix));
+      col.setHex(BOOK_COLS[Math.floor(Math.random()*BOOK_COLS.length)]); col.offsetHSL(0,0,(Math.random()-.5)*.06);
+      bookMesh.setColorAt(bookCount,col);
+      bookCount++; px+=th+0.01;
+    }
+  }
+}
+for(let i=0;i<8;i++) shelfUnit(-14+i*4,-13,0,3.9,8);
+for(let i=0;i<6;i++){ shelfUnit(-13,-11+i*4,Math.PI/2,3.9,8); shelfUnit(13,-11+i*4,-Math.PI/2,3.9,8); }
+bookMesh.count=bookCount; bookMesh.instanceMatrix.needsUpdate=true; if(bookMesh.instanceColor) bookMesh.instanceColor.needsUpdate=true;
+
+// --- 촛대 (깜빡이는 불빛)
+const flames=[];
+function candle(x,z,h=1.0){
+  const g=new THREE.Group(); g.position.set(x,0,z);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.12,20),new THREE.MeshStandardMaterial({color:0xb08a3a,metalness:.8,roughness:.35}));
+  base.position.y=.06; base.castShadow=true; g.add(base);
+  const wax=new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,h,16),new THREE.MeshStandardMaterial({color:0xf0e6cc,roughness:.7}));
+  wax.position.y=.12+h/2; wax.castShadow=true; g.add(wax);
+  const fl=new THREE.Mesh(new THREE.ConeGeometry(.08,.3,10),new THREE.MeshBasicMaterial({color:0xffc060}));
+  fl.position.y=.12+h+.16; g.add(fl);
+  const pl=new THREE.PointLight(0xffa244,1.0,13,1.6); pl.position.y=.12+h+.4; g.add(pl);
+  scene.add(g); flames.push({fl,pl,ph:Math.random()*10});
+}
+candle(-5.2,-3.3,1.1); candle(5.2,-3.3,.9); candle(-5.5,2.8,.7);
+
+// --- 탁자 소품
+(function decor(){
+  const cols=[0x7a2a2a,0x2a4a6a,0x3a5a34,0x6a4a1a];
+  cols.forEach((c,i)=>{
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1.3-i*.08,.22,.95),new THREE.MeshStandardMaterial({color:c,roughness:.7}));
+    b.position.set(-5.6+(Math.random()-.5)*.12,.11+i*.22,.6); b.rotation.y=(Math.random()-.5)*.35; b.castShadow=true; b.receiveShadow=true; scene.add(b);
+  });
+  const ink=new THREE.Mesh(new THREE.CylinderGeometry(.3,.36,.5,20),new THREE.MeshStandardMaterial({color:0x10141c,roughness:.15,metalness:.4}));
+  ink.position.set(5.6,.25,-0.4); ink.castShadow=true; scene.add(ink);
+  const quill=new THREE.Mesh(new THREE.CylinderGeometry(.01,.045,1.9,8),new THREE.MeshStandardMaterial({color:0xf2ead6,roughness:.6}));
+  quill.position.set(5.9,1.05,-0.3); quill.rotation.z=-.35; quill.castShadow=true; scene.add(quill);
+})();
+
+// --- 저울
+const scaleG=new THREE.Group(); scaleG.position.set(0,0,-5.7); scene.add(scaleG);
+const brass=new THREE.MeshStandardMaterial({color:0xc29a3e,metalness:.85,roughness:.32});
+const base=new THREE.Mesh(new THREE.CylinderGeometry(.75,.95,.22,28),brass); base.position.y=.11; base.castShadow=true; scaleG.add(base);
+const post=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,2.3,16),brass); post.position.y=1.3; post.castShadow=true; scaleG.add(post);
+const topBall=new THREE.Mesh(new THREE.SphereGeometry(.14,16,16),brass); topBall.position.y=2.5; scaleG.add(topBall);
+const beam=new THREE.Group(); beam.position.y=2.35; scaleG.add(beam);
+const beamBar=new THREE.Mesh(new THREE.BoxGeometry(3.4,.08,.1),brass); beamBar.castShadow=true; beam.add(beamBar);
+[-1.7,1.7].forEach(x=>{ const k=new THREE.Mesh(new THREE.SphereGeometry(.09,12,12),brass); k.position.x=x; beam.add(k); });
+const coinGeo=new THREE.CylinderGeometry(.13,.13,.05,16), coinMat=new THREE.MeshStandardMaterial({color:0xffd24a,metalness:.9,roughness:.25,emissive:0x442200,emissiveIntensity:.4});
+function makePan(){
+  const p=new THREE.Group();
+  const plate=new THREE.Mesh(new THREE.CylinderGeometry(.62,.42,.1,28),brass); plate.castShadow=true; p.add(plate);
+  const str=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.95,6),brass); str.position.y=.52; p.add(str);
+  const tokens=new THREE.Group(); tokens.position.y=.07; p.add(tokens); p.userData.tokens=tokens;
+  scaleG.add(p); return p;
+}
+const panL=makePan(), panR=makePan();   // 왼쪽 = 상대, 오른쪽 = 나
+let beamTarget=0;
+function updateTokens(){
+  [panL,panR].forEach(p=>{ const t=p.userData.tokens; while(t.children.length) t.remove(t.children[0]); });
+  if(!G) return;
+  const n=Math.abs(G.scale), pan=G.scale>0?panL:panR;
+  for(let i=0;i<n;i++){
+    const m=new THREE.Mesh(coinGeo,coinMat); m.position.set((Math.random()-.5)*.4,i*.05,(Math.random()-.5)*.4);
+    m.castShadow=true; pan.userData.tokens.add(m);
+  }
+}
+
+// --- 유령 사서 (상대)
+const ghost=new THREE.Group(); ghost.position.set(0,-0.6,-7.7); ghost.scale.setScalar(.9); scene.add(ghost);
+const ghostMat=new THREE.MeshStandardMaterial({color:0xaec8ff,emissive:0x3a5a9a,emissiveIntensity:.9,transparent:true,opacity:.78,roughness:.4});
+const gBody=new THREE.Mesh(new THREE.CylinderGeometry(.38,1.05,2.5,28),ghostMat); gBody.position.y=1.3; ghost.add(gBody);
+const gHead=new THREE.Mesh(new THREE.SphereGeometry(.52,24,24),ghostMat); gHead.position.y=2.85; ghost.add(gHead);
+const eyeMat=new THREE.MeshBasicMaterial({color:0xfff4b0});
+[-.19,.19].forEach(x=>{
+  const e=new THREE.Mesh(new THREE.SphereGeometry(.085,12,12),eyeMat); e.position.set(x,2.9,.46); ghost.add(e);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.15,.02,8,24),brass); ring.position.set(x,2.9,.49); ghost.add(ring);
+});
+const bridge=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,.14,6),brass); bridge.rotation.z=Math.PI/2; bridge.position.set(0,2.92,.5); ghost.add(bridge);
+const capMat=new THREE.MeshStandardMaterial({color:0x14141c,roughness:.7});
+const cap=new THREE.Mesh(new THREE.BoxGeometry(1.25,.08,1.25),capMat); cap.position.y=3.45; ghost.add(cap);
+const capBase=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.22,16),capMat); capBase.position.y=3.34; ghost.add(capBase);
+const tassel=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,.5,6),new THREE.MeshStandardMaterial({color:0xffc84a})); tassel.position.set(.6,3.2,.6); ghost.add(tassel);
+const gLight=new THREE.PointLight(0x7a9aff,1.2,9,1.5); gLight.position.set(0,2.5,.8); ghost.add(gLight);
+
+// --- 먼지 입자
+const DUST=260, dustPos=new Float32Array(DUST*3);
+for(let i=0;i<DUST;i++){ dustPos[i*3]=(Math.random()-.5)*20; dustPos[i*3+1]=Math.random()*9-1; dustPos[i*3+2]=(Math.random()-.5)*20-2; }
+const dustGeo=new THREE.BufferGeometry(); dustGeo.setAttribute('position',new THREE.BufferAttribute(dustPos,3));
+const dust=new THREE.Points(dustGeo,new THREE.PointsMaterial({size:.06,color:0xffe0a0,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(dust);
+
+/* =========================================================
+   카드 / 칸 / 더미 / 종 (3D 오브젝트)
+========================================================= */
+const LX=[-1.65,-0.55,0.55,1.65], ZQ=-3.45, ZE=-1.85, ZP=-0.25;
+const ZROW={q:ZQ,e:ZE,p:ZP};
+const slotPos=(side,l)=>new V3(LX[l],0.35,ZROW[side]);
+
+function roundedShape(w,h,r){
+  const s=new THREE.Shape(), x=-w/2, y=-h/2;
+  s.moveTo(x+r,y); s.lineTo(x+w-r,y); s.quadraticCurveTo(x+w,y,x+w,y+r); s.lineTo(x+w,y+h-r);
+  s.quadraticCurveTo(x+w,y+h,x+w-r,y+h); s.lineTo(x+r,y+h); s.quadraticCurveTo(x,y+h,x,y+h-r);
+  s.lineTo(x,y+r); s.quadraticCurveTo(x,y,x+r,y); return s;
+}
+const bodyGeo=new THREE.ExtrudeGeometry(roundedShape(1,1.4,.08),{depth:.04,bevelEnabled:false}); bodyGeo.translate(0,0,-.02);
+const bodyMat=new THREE.MeshStandardMaterial({color:0x3b2410,roughness:.8});
+const planeGeo=new THREE.PlaneGeometry(.965,1.365);
+const backCv=document.createElement('canvas'); backCv.width=320; backCv.height=448; drawBack(backCv);
+const backTex=canvasTex(backCv);
+const backMat=new THREE.MeshStandardMaterial({map:backTex,roughness:.6,transparent:true,alphaTest:.5});
+const DECK_POS=new V3(-3.7,0,-0.25), WORM_POS=new V3(-3.7,0,1.5);
+
+const views=new Map();
+function makeView(c,enemy){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(bodyGeo,bodyMat); body.castShadow=true; body.receiveShadow=true;
+  const cv=document.createElement('canvas'); cv.width=320; cv.height=448;
+  const tex=canvasTex(cv);
+  const fm=new THREE.MeshStandardMaterial({map:tex,roughness:.7,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:.2,transparent:true,alphaTest:.5});
+  const front=new THREE.Mesh(planeGeo,fm); front.position.z=.0205;
+  const back=new THREE.Mesh(planeGeo,backMat); back.position.z=-.0205; back.rotation.y=Math.PI;
+  g.add(body,front,back); scene.add(g);
+  const v={card:c,group:g,front,meshes:[body,front,back],cv,tex,key:'',
+    cp:new V3(),tp:new V3(),off:new V3(),tq:new THREE.Quaternion(),te:new THREE.Euler(),ts:1,col:0xffffff,
+    lockScale:false,dying:false,enemy};
+  body.userData={kind:'card',view:v}; front.userData={kind:'card',view:v}; back.userData={kind:'card',view:v};
+  if(enemy) v.cp.set(0,1.5,-7);
+  else v.cp.copy(c.id==='blank'?WORM_POS:DECK_POS).add(new V3(0,.4,0));
+  g.position.copy(v.cp); v.te.set(Math.PI/2,0,0); g.quaternion.setFromEuler(v.te);
+  g.scale.setScalar(.6);
+  views.set(c.uid,v); redrawFace(v,true);
+  return v;
+}
+function redrawFace(v,force){
+  const k=v.card.hp+'/'+v.card.atk;
+  if(!force&&v.key===k) return;
+  v.key=k; drawFace(v.cv,v.card,v.enemy); v.tex.needsUpdate=true;
+}
+function updateFaces(){ views.forEach(v=>redrawFace(v)); }
+function clearViews(){ views.forEach(v=>scene.remove(v.group)); views.clear(); }
+
+// --- 칸(슬롯) 표시
+const slotCv=document.createElement('canvas'); slotCv.width=256; slotCv.height=358;
+(function(){ const g=slotCv.getContext('2d'); g.strokeStyle='#fff'; g.lineWidth=8; g.setLineDash([26,16]); rr(g,10,10,236,338,22); g.stroke(); })();
+const slotTex=canvasTex(slotCv);
+const slotMeshes={p:[],e:[],q:[]};
+['q','e','p'].forEach(side=>{
+  for(let l=0;l<4;l++){
+    const s=side==='q'?.8:1;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(1.06*s,1.46*s),new THREE.MeshBasicMaterial({map:slotTex,color:0xe6c88c,transparent:true,opacity:side==='q'?.14:.26,depthWrite:false}));
+    m.rotation.x=-Math.PI/2; m.position.set(LX[l],.012,ZROW[side]); scene.add(m);
+    m.userData={kind:'slot',side,lane:l,pulse:false}; slotMeshes[side].push(m);
+  }
+});
+
+// --- 카드 더미
+const pileSide=new THREE.MeshStandardMaterial({color:0x3b2410,roughness:.8});
+function makePile(pos,tint){
+  const geo=new THREE.BoxGeometry(1,1,1.4); geo.translate(0,.5,0);
+  const top=new THREE.MeshStandardMaterial({map:backTex,color:tint,roughness:.6,emissive:0x000000});
+  const m=new THREE.Mesh(geo,[pileSide,pileSide,top,pileSide,pileSide,pileSide]);
+  m.position.copy(pos); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m;
+}
+const deckPile=makePile(DECK_POS,0xffffff), wormPile=makePile(WORM_POS,0xf4f0e0);
+deckPile.userData={kind:'deck'}; wormPile.userData={kind:'worm'}; wormPile.scale.y=.3;
+
+// --- 종 (3D)
+const bellPivot=new THREE.Group(); bellPivot.position.set(3.7,.7,1.1); scene.add(bellPivot);
+const bellPts=[[.46,0],[.42,0],[.35,.12],[.27,.3],[.19,.44],[.1,.52],[.0,.56]].map(p=>new THREE.Vector2(p[0],p[1]));
+const bellMesh=new THREE.Mesh(new THREE.LatheGeometry(bellPts,28),new THREE.MeshStandardMaterial({color:0xd4a840,metalness:.9,roughness:.28,side:THREE.DoubleSide}));
+bellMesh.position.y=-.65; bellMesh.castShadow=true; bellPivot.add(bellMesh);
+const clapper=new THREE.Mesh(new THREE.SphereGeometry(.09,12,12),brass); clapper.position.y=-.7; bellPivot.add(clapper);
+const bellBase=new THREE.Mesh(new THREE.CylinderGeometry(.6,.7,.06,24),new THREE.MeshStandardMaterial({color:0x4a2a14,roughness:.7})); bellBase.position.set(3.7,.03,1.1); scene.add(bellBase);
+const bellHit=new THREE.Mesh(new THREE.SphereGeometry(.6,8,8),new THREE.MeshBasicMaterial({visible:false})); bellHit.position.set(3.7,.35,1.1); scene.add(bellHit); bellHit.userData={kind:'bell'};
+let bellWob=0;
+
+/* =========================================================
+   게임 상태
+========================================================= */
+let run=null, G=null;
+function newRun(){ run={battle:0, deck:['saemteo','libguide','scrapbook','socrates','dodeok','meditations','heart','prince','justice','hawking']}; }
+function newBattle(){
+  clearViews();
+  G={pBoard:[null,null,null,null],eBoard:[null,null,null,null],eQueue:[null,null,null,null],
+     hand:[],drawPile:shuffle(run.deck.slice()),ink:0,bonus:0,scale:0,turn:1,
+     phase:'draw',selected:null,busy:false,over:false};
+  G.hand.push(mk('blank'));
+  for(let i=0;i<2&&G.drawPile.length;i++) G.hand.push(mk(G.drawPile.pop()));
+  enemyQueue(2);
+  if(run.battle===2){ const l=Math.floor(Math.random()*4); if(!G.eQueue[l]) G.eQueue[l]=mk('donguibogam'); }
+  ghostMat.color.setHex(FOE_COL[run.battle]); ghostMat.emissive.setHex(FOE_COL[run.battle]); ghostMat.emissiveIntensity=.45;
+  ghost.scale.setScalar(run.battle===2?1.15:.9);
+  say(pick(LINES.start)); sync();
+}
+function enemyQueue(n){
+  const pool=POOLS[run.battle];
+  const empty=shuffle([0,1,2,3].filter(l=>!G.eQueue[l]));
+  for(let i=0;i<n&&i<empty.length;i++) G.eQueue[empty[i]]=mk(pick(pool));
+}
+function say(t){ document.getElementById('narr').textContent=t; }
+const selCard=()=>G&&G.selected!=null?G.hand[G.selected]:null;
+
+/* =========================================================
+   배치 / 동기화
+========================================================= */
+let hoverUid=null;
+function layout(){
+  const live=new Set();
+  const put=(c,x,y,z,rx,rz,s,enemy,col)=>{
+    let v=views.get(c.uid); if(!v) v=makeView(c,enemy);
+    live.add(c.uid); v.tp.set(x,y,z); v.te.set(rx,0,rz); v.tq.setFromEuler(v.te); v.ts=s; v.col=col; v.enemy=enemy;
+  };
+  const F=-Math.PI/2;
+  G.eQueue.forEach((c,l)=>c&&put(c,LX[l],.04,ZQ,F,0,.78,true,0xb8b8b8));
+  G.eBoard.forEach((c,l)=>c&&put(c,LX[l],.04,ZE,F,0,1,true,0xffffff));
+  G.pBoard.forEach((c,l)=>c&&put(c,LX[l],.04,ZP,F,0,1,false,0xffffff));
+  const n=G.hand.length, step=Math.min(1.05,6.4/Math.max(n,1));
+  G.hand.forEach((c,i)=>{
+    const o=i-(n-1)/2, hov=hoverUid===c.uid, sel=G.selected===i;
+    const dim=G.phase==='main'&&c.cost.n>G.ink;
+    put(c,o*step,.95+(hov?.35:0)+(sel?.7:0)+i*.003,3.15-(hov?.25:0)-(sel?.35:0),F+.44+(hov||sel?.12:0),-o*.035,1.12,false,dim?0x9a9a9a:0xffffff);
+  });
+  views.forEach((v,id)=>{ if(!live.has(id)&&!v.dying){ scene.remove(v.group); views.delete(id); } });
+}
+function hintText(){
+  if(!G||G.over) return '';
+  if(G.busy) return '전투 중...';
+  if(G.phase==='draw') return '왼쪽의 덱 또는 백지 노트 더미를 눌러 책을 한 권 뽑으세요';
+  const sc=selCard();
+  if(!sc) return '손패의 책을 눌러 선택하세요 · 준비되면 종을 치세요';
+  if(sc.cost.n>G.ink) return `잉크가 부족합니다 (${G.ink}/${sc.cost.n})`;
+  return '빈 칸을 눌러 책을 내려놓으세요';
+}
+function slotStates(){
+  const sc=selCard();
+  slotMeshes.p.forEach((m,l)=>{
+    const c=G.pBoard[l]; let col=0xe6c88c, op=.26, pulse=false;
+    if(sc&&G.phase==='main'&&!G.busy&&!c&&sc.cost.n<=G.ink){ col=0x7fe08a; op=.9; pulse=true; }
+    m.material.color.setHex(col); m.material.opacity=op; m.userData.pulse=pulse; m.userData.base=op;
+  });
+}
+function hud(){
+  document.getElementById('ink').textContent=`🖋️ ${G.ink} / ${maxInk(G.turn)}`+(G.bonus?` (+${G.bonus})`:'');
+  document.getElementById('status').innerHTML=`${FOES[run.battle]}<br>전투 ${run.battle+1}/3 · 턴 ${G.turn}`;
+  document.getElementById('scaletxt').textContent=G.scale===0?`⚖️ 균형 (0/${WIN_AT})`:(G.scale>0?`⚖️ 내가 우세 +${G.scale}/${WIN_AT}`:`⚖️ 상대가 우세 ${-G.scale}/${WIN_AT}`);
+  document.getElementById('hint').textContent=hintText();
+  document.getElementById('bellBtn').disabled=!(G.phase==='main'&&!G.busy&&!G.over);
+  const dr=G.phase==='draw'&&!G.busy&&!G.over;
+  deckPile.scale.y=Math.max(.02,G.drawPile.length*.05); deckPile.visible=G.drawPile.length>0;
+  deckPile.material[2].emissive.setHex(dr&&G.drawPile.length?0x553311:0x000000);
+  wormPile.material[2].emissive.setHex(dr?0x554422:0x000000);
+}
+function sync(){
+  if(!G) return;
+  layout(); updateFaces(); hud(); slotStates();
+  beamTarget=Math.max(-1,Math.min(1,G.scale/WIN_AT))*0.38;
+}
+
+/* =========================================================
+   애니메이션 도우미
+========================================================= */
+function tween(ms,fn){
+  return new Promise(res=>{
+    const t0=performance.now();
+    (function step(now){ const t=Math.min(1,(now-t0)/ms); fn(t); if(t<1) requestAnimationFrame(step); else res(); })(t0);
+  });
+}
+function popAt(p3,txt,color='#ff6a5a'){
+  const p=p3.clone().project(camera);
+  const d=document.createElement('div'); d.className='pop3'; d.textContent=txt; d.style.color=color;
+  d.style.left=((p.x*.5+.5)*window.innerWidth)+'px'; d.style.top=((-p.y*.5+.5)*window.innerHeight)+'px';
+  document.body.appendChild(d); setTimeout(()=>d.remove(),950);
+}
+async function lunge(v,dir,amp,dx,onImpact){
+  let fired=false;
+  await tween(300,t=>{
+    const s=Math.sin(Math.PI*t);
+    v.off.set(dx*s,.5*s,dir*amp*s);
+    if(!fired&&t>=.5){ fired=true; onImpact&&onImpact(); }
+  });
+  v.off.set(0,0,0);
+}
+function shake(v){
+  v.front.material.color.setHex(0xff5050);
+  tween(300,t=>{ v.off.x=Math.sin(t*34)*.09*(1-t); }).then(()=>{ v.off.x=0; v.front.material.color.setHex(v.col); });
+}
+async function dispose(v){
+  v.dying=true; v.lockScale=true;
+  const s0=v.group.scale.x;
+  await tween(320,t=>{ v.group.scale.setScalar(s0*(1-t)); v.off.y=t*.6; });
+  scene.remove(v.group); views.delete(v.card.uid);
+}
+
+/* =========================================================
+   입력 (Raycaster)
+========================================================= */
+const ray=new THREE.Raycaster(), ptr=new THREE.Vector2();
+const ov=document.getElementById('ov');
+const blocked=()=>ov.style.display==='flex'||!G;
+function pickObj(ev){
+  const r=renderer.domElement.getBoundingClientRect();
+  ptr.set(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ptr,camera);
+  const objs=[];
+  views.forEach(v=>{ if(!v.dying) objs.push(...v.meshes); });
+  objs.push(...slotMeshes.p,deckPile,wormPile,bellHit);
+  const hits=ray.intersectObjects(objs,false);
+  return hits.length?hits[0].object:null;
+}
+const info=document.getElementById('info');
+renderer.domElement.addEventListener('pointermove',ev=>{
+  mx=(ev.clientX/window.innerWidth-.5)*2; my=(ev.clientY/window.innerHeight-.5)*2;
+  if(blocked()){ info.style.display='none'; return; }
+  const o=pickObj(ev);
+  let cursor='default', c=null, newHover=null;
+  if(o){
+    const ud=o.userData;
+    if(ud.kind==='card'){ c=ud.view.card; if(G.hand.includes(c)){ newHover=c.uid; cursor='pointer'; } }
+    else cursor='pointer';
+  }
+  renderer.domElement.style.cursor=cursor;
+  if(newHover!==hoverUid){ hoverUid=newHover; layout(); }
+  if(c){
+    info.innerHTML=`<b>${c.name}</b><br>${c.author}<br>`+
+      `분류: KDC ${c.cls}00 ${KDC_NAME[c.cls]} → 코스트 ${c.cost.n}<br>`+
+      `📄 ${c.pages}쪽 → 공격력 ⚔️${c.atk} (쪽수÷50) · 체력 ❤️${c.hp}/${c.maxhp}`+
+      (c.sigils.length?'<br>'+c.sigils.map(s=>`${SIG[s].icon} <b>${SIG[s].name}</b>: ${SIG[s].desc}`).join('<br>'):'');
+    info.style.display='block';
+    info.style.left=Math.min(ev.clientX+16,window.innerWidth-280)+'px'; info.style.top=Math.max(8,ev.clientY-110)+'px';
+  } else info.style.display='none';
+});
+renderer.domElement.addEventListener('pointerdown',ev=>{
+  if(blocked()||G.busy||G.over) return;
+  const o=pickObj(ev); if(!o) return;
+  const ud=o.userData;
+  if(ud.kind==='card'){
+    const c=ud.view.card, hi=G.hand.indexOf(c);
+    if(hi>=0) clickHand(hi);
+  }
+  else if(ud.kind==='slot'&&G.phase==='main') onSlot(ud.lane);
+  else if(ud.kind==='deck') drawFrom('deck');
+  else if(ud.kind==='worm') drawFrom('blank');
+  else if(ud.kind==='bell') ringBell();
+});
+document.getElementById('bellBtn').onclick=()=>ringBell();
+document.getElementById('mute').onclick=function(){ muted=!muted; this.textContent=muted?'🔇':'🔊'; };
+function ringBell(){ if(G&&G.phase==='main'&&!G.busy&&!G.over) endTurn(); }
+
+function clickHand(i){
+  if(G.phase!=='main') return;
+  G.selected=G.selected===i?null:i; snd(400,.05,'triangle',.04); sync();
+}
+function drawFrom(k){
+  if(!G||G.phase!=='draw'||G.busy||G.over) return;
+  if(k==='deck'){ if(!G.drawPile.length) return; G.hand.push(mk(G.drawPile.pop())); }
+  else G.hand.push(mk('blank'));
+  G.phase='main';
+  G.ink=maxInk(G.turn)+G.bonus; G.bonus=0;   // 매 턴 잉크 충전
+  sFlip(); sync();
+}
+function onSlot(lane){
+  const sc=selCard(); if(!sc) return;
+  if(G.pBoard[lane]) return;
+  if(sc.cost.n>G.ink){ say(`"잉크가 모자라군. (${G.ink}/${sc.cost.n})"`); return; }
+  place(lane);
+}
+function place(lane){
+  const sc=selCard();
+  G.ink-=sc.cost.n;
+  G.pBoard[lane]=sc; G.hand.splice(G.selected,1);
+  G.selected=null; hoverUid=null;
+  sPlace(); say(pick(LINES.play)); sync();
+}
+
+/* =========================================================
+   전투
+========================================================= */
+async function endTurn(){
+  G.busy=true; G.phase='combat'; G.selected=null; hoverUid=null;
+  bellWob=.5; sBell(); say(pick(LINES.bell)); sync(); await sleep(500);
+  for(let l=0;l<4&&!G.over;l++) await attack('p',l);
+  if(G.over) return;
+  say(pick(LINES.enemy)); await sleep(350);
+  for(let l=0;l<4&&!G.over;l++) await attack('e',l);
+  if(G.over) return;
+  for(let l=0;l<4;l++) if(G.eQueue[l]&&!G.eBoard[l]){ G.eBoard[l]=G.eQueue[l]; G.eQueue[l]=null; }
+  sync(); await sleep(350);
+  const extra=Math.random()<[0.15,0.35,0.5][run.battle]?1:0;
+  enemyQueue(1+extra); sync(); await sleep(250);
+  G.turn++; G.phase='draw'; G.busy=false;
+  say('"책을 한 권 뽑게."'); sync();
+}
+async function attack(side,lane){
+  const mine=side==='p'?G.pBoard:G.eBoard, theirs=side==='p'?G.eBoard:G.pBoard, o=side==='p'?'e':'p';
+  const c=mine[lane]; if(!c||c.atk<=0||G.over) return;
+  const v=views.get(c.uid); if(!v) return;
+  const dir=side==='p'?-1:1;
+  const targets=c.sigils.includes('bifurcated')?[lane-1,lane+1].filter(x=>x>=0&&x<4):[lane];
+  for(const t of targets){
+    if(G.over||c.hp<=0||mine[lane]!==c) break;
+    const d=theirs[t];
+    const direct=!d||(c.sigils.includes('airborne')&&!d.sigils.includes('leap'));
+    await lunge(v,dir,direct?1.35:.85,(LX[t]-LX[lane])*.45,()=>{
+      if(direct){ damagePlayer(side,c.atk); }
+      else{
+        sHit(); camShake=.12;
+        const dv=views.get(d.uid);
+        popAt(slotPos(o,t),'-'+c.atk);
+        d.hp-=c.atk; if(c.sigils.includes('deathtouch')) d.hp=0;
+        if(d.sigils.includes('quills')){ c.hp-=1; popAt(slotPos(side,lane),'-1'); }
+        if(dv) shake(dv); updateFaces();
+      }
+    });
+    await reap();
+  }
+}
+async function reap(){
+  const dead=[];
+  [['p',G.pBoard],['e',G.eBoard]].forEach(([s,b])=>b.forEach((c,l)=>{ if(c&&c.hp<=0) dead.push([s,l,c]); }));
+  if(!dead.length) return;
+  sDie();
+  const jobs=dead.map(([s,l,c])=>{
+    (s==='p'?G.pBoard:G.eBoard)[l]=null;
+    if(s==='p'){ G.bonus++; popAt(slotPos('p',l),'+1 🖋️ (다음 턴)','#8ec8ff'); }
+    const v=views.get(c.uid); return v?dispose(v):Promise.resolve();
+  });
+  await Promise.all(jobs); sync(); await sleep(120);
+}
+function damagePlayer(side,n){
+  G.scale+=side==='p'?n:-n;
+  sDmg(); camShake=.2; sync(); updateTokens();
+  popAt(new V3(0,2.9,-5.7),(side==='p'?'+':'-')+n,side==='p'?'#9be58a':'#ff6a5a');
+  if(G.scale>=WIN_AT){ G.over=true; setTimeout(winBattle,900); }
+  else if(G.scale<=-WIN_AT){ G.over=true; setTimeout(loseBattle,900); }
+}
+
+/* =========================================================
+   오버레이 / 진행
+========================================================= */
+function showOv(html){ ov.innerHTML=html; ov.style.display='flex'; info.style.display='none'; }
+function hideOv(){ ov.style.display='none'; ov.innerHTML=''; }
+function intro(){
+  showOv(`
+    <h1>📚 금서고의 카드</h1>
+    <p>한밤의 대도서관, 모든 카드는 <b>책</b>이다.<br>세 명의 유령 사서를 이기면 서고 문이 열린다.</p>
+    <ul class="rules">
+      <li>🔢 <b>코스트</b> = 책의 <b>KDC 대분류 맨 앞자리</b> (0~9). 잉크로 지불한다.</li>
+      <li>⚔️ <b>공격력</b> = <b>쪽수 50쪽당 1</b> (예: 130쪽 → 공격력 2)</li>
+      <li>❤️ <b>체력</b> = 쪽수 100쪽당 1 (최소 1, 최대 6)</li>
+      <li>🖋️ <b>잉크</b>는 매 턴 시작에 <b>(턴 수 + 2)</b>까지 충전된다 (최대 10). 죽은 내 책 1권당 다음 턴 +1.</li>
+      <li>⚖️ 상대 본체에 준 피해가 <b>+${WIN_AT}</b>면 승리, <b>-${WIN_AT}</b>면 패배.</li>
+      <li>📓 매 턴 <b>덱</b> 또는 <b>백지 노트</b>(공격 0, 무료) 더미에서 한 권을 뽑는다.</li>
+      <li>🔔 종(또는 버튼)을 치면 내 책 → 상대 책 순서로 공격한다. 이기면 새 책 한 권을 덱에 넣는다.</li>
+    </ul>
+    <div class="kdc">KDC 대분류 · 0 총류 · 1 철학 · 2 종교 · 3 사회과학 · 4 자연과학<br>5 기술과학 · 6 예술 · 7 언어 · 8 문학 · 9 역사</div>
+    <button class="btn" id="startBtn">서고에 들어선다</button>`);
+  document.getElementById('startBtn').onclick=()=>{ snd(330,.25,'triangle',.08); hideOv(); newRun(); newBattle(); };
+}
+function winBattle(){
+  say(pick(LINES.win));
+  if(run.battle>=2){
+    showOv(`<h1>🏆 서고 탈출</h1><p>관장 유령은 촛불을 끄고 책장 사이로 스며들었다.<br>육중한 문이 열린다. 당신은 모든 승부에서 이겼다.</p><button class="btn" id="againBtn">다시 도전</button>`);
+    document.getElementById('againBtn').onclick=()=>{ hideOv(); newRun(); newBattle(); };
+    return;
+  }
+  const ids=shuffle(ALL_IDS.filter(k=>k!=='blank')).slice(0,3);
+  showOv(`<h1>승리</h1><p>서가에서 새 책 한 권을 골라 덱에 넣는다.</p><div class="rewards" id="rw"></div>`);
+  const rw=document.getElementById('rw');
+  ids.forEach(id=>{
+    const c=mk(id), box=document.createElement('div'); box.className='rw';
+    const cv=document.createElement('canvas'); cv.width=320; cv.height=448; drawFace(cv,c,false);
+    const t=document.createElement('div'); t.style.marginTop='6px'; t.style.lineHeight='1.5';
+    t.innerHTML=`코스트 ${c.cost.n} · ⚔️${c.atk} · ❤️${c.hp}`+(c.sigils.length?'<br>'+c.sigils.map(s=>`${SIG[s].icon} ${SIG[s].name}: ${SIG[s].desc}`).join('<br>'):'');
+    box.append(cv,t);
+    box.onclick=()=>{ run.deck.push(id); run.battle++; hideOv(); newBattle(); };
+    rw.appendChild(box);
+  });
+}
+function loseBattle(){
+  say(pick(LINES.lose));
+  showOv(`<h1>💀 촛불이 꺼졌다</h1><p>저울이 사서 쪽으로 기울었다.<br>유령이 책장을 덮고 카드를 다시 섞는다.</p><button class="btn" id="retryBtn">처음부터 다시</button>`);
+  document.getElementById('retryBtn').onclick=()=>{ hideOv(); newRun(); newBattle(); };
+}
+
+/* =========================================================
+   메인 루프
+========================================================= */
+const lblDeck=document.createElement('div'), lblWorm=document.createElement('div');
+lblDeck.className=lblWorm.className='lbl';
+document.getElementById('labels').append(lblDeck,lblWorm);
+function placeLabel(el,p3){
+  const p=p3.clone().project(camera);
+  el.style.display=p.z<1?'block':'none';
+  el.style.left=((p.x*.5+.5)*window.innerWidth)+'px'; el.style.top=((-p.y*.5+.5)*window.innerHeight)+'px';
+}
+const tmpColor=new THREE.Color();
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  const k=1-Math.exp(-dt*11), t=now/1000;
+
+  camShake*=.9;
+  camera.position.set(LOOK.x+DIR.x*camMul+mx*.7+(Math.random()-.5)*camShake,
+                      LOOK.y+DIR.y*camMul-my*.25+(Math.random()-.5)*camShake,
+                      LOOK.z+DIR.z*camMul);
+  camera.lookAt(LOOK);
+
+  views.forEach(v=>{
+    v.cp.lerp(v.tp,k);
+    v.group.position.copy(v.cp).add(v.off);
+    v.group.quaternion.slerp(v.tq,k);
+    if(!v.lockScale){ const s=v.group.scale.x+(v.ts-v.group.scale.x)*k; v.group.scale.setScalar(s); }
+    v.front.material.color.lerp(tmpColor.setHex(v.col),.25);
+  });
+
+  slotMeshes.p.forEach(m=>{ if(m.userData.pulse) m.material.opacity=(m.userData.base||.9)*(.65+.35*Math.sin(t*6)); });
+
+  flames.forEach(f=>{
+    const n=Math.sin(t*9+f.ph)*.5+Math.sin(t*23+f.ph*2)*.3;
+    f.pl.intensity=1.0+n*.25; f.fl.scale.set(1+n*.12,1+n*.25,1+n*.12);
+  });
+
+  beam.rotation.z+=(beamTarget-beam.rotation.z)*Math.min(1,dt*4);
+  const th=beam.rotation.z;
+  panL.position.set(-1.7*Math.cos(th),2.35-1.7*Math.sin(th)-.95,0);
+  panR.position.set( 1.7*Math.cos(th),2.35+1.7*Math.sin(th)-.95,0);
+
+  ghost.position.y=-0.6+Math.sin(t*1.4)*.18; ghost.rotation.y=Math.sin(t*.6)*.15;
+  gLight.intensity=1.1+Math.sin(t*3)*.2;
+
+  bellWob*=.95; bellPivot.rotation.z=Math.sin(t*28)*bellWob;
+
+  const pa=dustGeo.attributes.position;
+  for(let i=0;i<DUST;i++){
+    pa.array[i*3+1]+=dt*.12; pa.array[i*3]+=Math.sin(t*.3+i)*dt*.05;
+    if(pa.array[i*3+1]>8) pa.array[i*3+1]=-1;
+  }
+  pa.needsUpdate=true;
+
+  if(G&&ov.style.display!=='flex'){
+    lblDeck.textContent=`덱 ${G.drawPile.length}권`; lblWorm.textContent='백지 노트 ∞';
+    placeLabel(lblDeck,new V3(DECK_POS.x,.1,DECK_POS.z+.95)); placeLabel(lblWorm,new V3(WORM_POS.x,.1,WORM_POS.z+.95));
+  } else { lblDeck.style.display=lblWorm.style.display='none'; }
+
+  renderer.render(scene,camera);
+}
+
+fit();
+requestAnimationFrame(loop);
+intro();
+</script>
+</body>
+</html>
