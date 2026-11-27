@@ -480,7 +480,7 @@ body.touch .chev{padding:5px 10px}
 <div id="fatal" class="fatal" hidden>이 브라우저에서는 3D 화면(WebGL)을 쓸 수 없어요. 다른 브라우저나 기기에서 열어 주세요.</div>
 
 <div id="aim" aria-hidden="true"></div>
-<div id="tip" aria-hidden="true" hidden>책 펼치기</div>
+<div id="tip" aria-hidden="true" hidden></div>
 
 <aside id="mission" class="glass hud">
   <div class="m-top">
@@ -1879,18 +1879,20 @@ function update(dt,t){
     tg.mat.emissiveIntensity=done?0.3:(hoverId===id&&hit.dist<=RANGE?1.1:0.28+0.18*Math.sin(t*2.4+tg.phase));
     tg.glow.material.opacity=done?0.18:(0.3+0.2*Math.sin(t*2.4+tg.phase));
   }
-  if(hit){
+  /* 열 수 있는 책 위에는 아무 표시도 띄우지 않고, 멀거나 잠긴 책만 안내 */
+  const openable=!!hit&&hit.dist<=RANGE&&!isLocked(hit.id);
+  if(hit&&!openable){
     tipEl.hidden=false;
-    const near=hit.dist<=RANGE;
     const shut=isLocked(hit.id);
-    tipEl.className=near&&!shut?'':'far';
-    tipEl.textContent=shut?'첫 과제를 먼저 완료하세요':near?'책 펼치기':'조금 더 가까이';
+    tipEl.className='far';
+    tipEl.textContent=shut?'첫 과제를 먼저 완료하세요':'조금 더 가까이';
     const p=locked||!mouse.has||document.body.classList.contains('touch')?{x:window.innerWidth/2,y:window.innerHeight/2}:mouse;
     tipEl.style.transform='translate('+Math.round(p.x+16)+'px,'+Math.round(p.y+18)+'px)';
-    canvas.style.cursor=near&&!shut?'pointer':canvas.style.cursor;
+    if(canvas.style.cursor==='pointer')canvas.style.cursor='grab';
   }else{
     tipEl.hidden=true;
-    if(canvas.style.cursor==='pointer')canvas.style.cursor='grab';
+    if(openable)canvas.style.cursor='pointer';
+    else if(canvas.style.cursor==='pointer')canvas.style.cursor='grab';
   }
   if(state==='play'||state==='scold'||state==='gate')drawMap();
 }
