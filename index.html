@@ -359,9 +359,9 @@ body.touch .chev{padding:5px 10px}
 .pk.on{background:var(--accent);color:#04201c}
 #btnRun{
   right:calc(env(safe-area-inset-right,0px) + 18px);
-  width:calc(var(--pad) * .8);height:calc(var(--pad) * .8);border-radius:50%;
+  width:calc(var(--pad) * .4);height:calc(var(--pad) * .4);border-radius:50%;
   background:radial-gradient(circle at 35% 30%,#f08a52,#b94f22);color:#fff;border:3px solid rgba(255,255,255,.55);
-  font:700 calc(var(--pad) * .15) var(--ui);box-shadow:0 5px 0 rgba(0,0,0,.4);cursor:pointer;
+  padding:0;font:700 max(13px,calc(var(--pad) * .1)) var(--ui);white-space:nowrap;box-shadow:0 5px 0 rgba(0,0,0,.4);cursor:pointer;
 }
 #btnRun.on{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.4);filter:brightness(1.25)}
 
@@ -446,6 +446,29 @@ body.touch .chev{padding:5px 10px}
   #start .rotate-tip{font-size:11px;line-height:1.45;margin-bottom:8px;padding:5px 8px}
   #start .btn.big{font-size:15px;padding:8px 24px}
 }
+/* ---------- 방문자 현황: 넓은 화면은 지도 왼쪽, 좁은 화면은 지도 바로 아래 ---------- */
+#visit{
+  position:fixed;z-index:10;padding:6px 14px;white-space:nowrap;font-size:14px;font-weight:700;
+  top:calc(env(safe-area-inset-top,0px) + 12px);
+  right:calc(max(16px,env(safe-area-inset-right,0px)) + 198px);
+}
+#visit b{color:var(--gold);font-variant-numeric:tabular-nums}
+@media (max-width:760px), (max-height:560px){
+  #visit{right:max(16px,env(safe-area-inset-right,0px));min-width:130px;padding:4px 8px;font-size:12.5px;text-align:center;top:calc(env(safe-area-inset-top,0px) + 122px)}
+}
+/* 세로 휴대전화: 펼친 목록은 방문자 표시 아래에 */
+@media (max-width:700px) and (orientation:portrait){
+  #mission:not(.closed){top:calc(env(safe-area-inset-top,0px) + 164px)}
+  #mList{max-height:calc(100vh - 284px);max-height:calc(100dvh - 284px)}
+  #mission.closed{z-index:11}
+}
+@media (orientation:landscape) and (max-height:560px){
+  #visit{min-width:110px;top:calc(env(safe-area-inset-top,0px) + 103px)}
+}
+/* 아주 좁은 세로 화면: 접은 목록도 방문자 표시 아래에 */
+@media (max-width:355px) and (orientation:portrait){
+  #mission.closed{top:calc(env(safe-area-inset-top,0px) + 164px)}
+}
 @media (prefers-reduced-motion:reduce){
   .book,.cover,.inner{transition-duration:.01s!important;transition-delay:0s!important}
 }
@@ -469,6 +492,7 @@ body.touch .chev{padding:5px 10px}
   <ul id="mList"></ul>
   <div class="m-foot">점수 <b id="mScore">0</b></div>
 </aside>
+<div id="visit" class="glass hud">방문 : <b id="vCount">–</b>명</div>
 <div id="mapbox" class="glass hud"><canvas id="map" width="216" height="168" aria-label="도서관 지도"></canvas></div>
 <div id="hint" class="hud">
   <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E</span>
@@ -535,6 +559,26 @@ const $=id=>document.getElementById(id);
 if(!window.THREE){$('fatal').hidden=false;return;}
 const T=THREE;
 const coarse=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
+/* =====================================================
+   방문자 집계 설정
+   COUNTER_URL: 구글 시트에 연결한 웹 앱 주소(…/exec). 비어 있거나 불러오지 못하면 '–명'으로 표시
+===================================================== */
+const COUNTER_URL='https://script.google.com/macros/s/AKfycbzrrRp7DpOXXrhBxQTE9Bp_sAyALD0GoIJT3NAB9kXR8ZeBY6QHMtGa109_XHhVf9vG/exec';
+(function(){
+  if(!COUNTER_URL)return;
+  function load(k){try{return localStorage.getItem(k);}catch(err){return null;}}
+  function save(k,v){try{localStorage.setItem(k,v);}catch(err){}}
+  /* 이름 등 개인정보 없이 무작위 번호만 보내며, 같은 브라우저는 한 명으로 셈 */
+  let id=load('libraryQuest.visitorId');
+  if(!id){id=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);save('libraryQuest.visitorId',id);}
+  function refresh(){
+    fetch(COUNTER_URL+'?id='+encodeURIComponent(id))
+      .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+      .then(function(d){if(typeof d.count==='number')$('vCount').textContent=d.count.toLocaleString('ko-KR');})
+      .catch(function(){});       /* 실패하면 마지막으로 불러온 값(처음이면 –)을 유지 */
+  }
+  refresh();setInterval(refresh,60000);
+})();
 const reduced=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches);
 if(coarse)document.body.classList.add('touch');
 
