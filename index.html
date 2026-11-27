@@ -1194,7 +1194,8 @@ function table(x,z){
   scene.add(g);
   addCol(x-1.7,x+1.7,z-0.8,z+0.8,0.8,'rgba(210,180,130,.55)');
 }
-[[-11,5.6],[-3.7,5.6],[3.7,5.6],[11,5.6],[-11,9.6],[-3.7,9.6],[11,9.6]].forEach(function(p){table(p[0],p[1]);});
+const TABLES=[[-11,5.6],[-3.7,5.6],[3.7,5.6],[11,5.6],[-11,9.6],[-3.7,9.6],[11,9.6]];
+TABLES.forEach(function(p){table(p[0],p[1]);});
 
 /* =====================================================
    출입문 앞의 도서 도난 방지 게이트
@@ -1408,6 +1409,7 @@ function plant(x,z){
 ===================================================== */
 let state='start';
 let runTime=0;
+let runLimit=1+Math.random();   /* 뛰기 시작한 뒤 사서 선생님이 움직일 때까지의 시간(초), 1~2초 사이 무작위 */
 const results={};
 let endShown=false;
 const player={x:SPAWN.x,z:SPAWN.z,yaw:0,pitch:0,vx:0,vz:0,bob:0};
@@ -1464,6 +1466,7 @@ function drawMap(){
   for(const id in results){
     const p=targets[id].pos;g.fillStyle='#2ecc71';g.beginPath();g.arc((p.x+W/2)*MAPS,(p.z+D/2)*MAPS,3.2,0,6.283);g.fill();
   }
+  if(lib.mode==='rise'||lib.mode==='come'){g.fillStyle='#ff5a4d';g.beginPath();g.arc((lib.x+W/2)*MAPS,(lib.z+D/2)*MAPS,4,0,6.283);g.fill();}
   const px=(player.x+W/2)*MAPS,py=(player.z+D/2)*MAPS;
   const ang=Math.atan2(-Math.cos(player.yaw),-Math.sin(player.yaw));
   g.save();g.translate(px,py);g.rotate(ang);
@@ -1639,6 +1642,11 @@ $('btnLock').addEventListener('click',function(){
    이동과 충돌
 ===================================================== */
 function resolve(){
+  resolveStatic();
+  pushOutVisitors();
+  resolveStatic();   /* 밀려나 서가 안으로 들어가지 않게 한 번 더 */
+}
+function resolveStatic(){
   const R=0.38;
   player.x=Math.max(-W/2+0.5,Math.min(W/2-0.5,player.x));
   player.z=Math.max(-D/2+0.5,Math.min(D/2-0.55,player.z));
@@ -1659,11 +1667,13 @@ function resolve(){
    도서관에서 뛰면 사서 선생님이 달려오는 기능
    sit(앉음) → rise(일어남) → come(달려옴) → talk(말하기) → back(돌아감) → sitdown(앉음)
 ===================================================== */
-const lib={mode:'sit',x:SEAT.x,z:SEAT.z,yaw:SEAT.yaw,sit:1,phase:0,path:[],speed:0};
+const lib={mode:'sit',x:SEAT.x,z:SEAT.z,yaw:SEAT.yaw,sit:1,phase:0,path:[],speed:0,replan:0};
 const STAFF_EXIT={x:DESK.x+2.1,z:SEAT.z};     /* 데스크 안쪽에서 드나드는 지점 */
 const NAV=0.25,NAV_R=0.28,NX=Math.round(W/NAV),NZ=Math.round(D/NAV);
+const extraObs=[];   /* 바닥에 앉아 읽는 사람 등, 길 찾기에서만 피하는 원형 장애물 */
 function navBlocked(x,z){
   if(x<-W/2+0.4||x>W/2-0.4||z<-D/2+0.4||z>D/2-0.4)return true;
+  if(extraObs.some(function(o){return Math.hypot(x-o.x,z-o.z)<o.r+NAV_R;}))return true;
   return colliders.some(function(c){
     const dx=x-Math.max(c.x0,Math.min(x,c.x1)),dz=z-Math.max(c.z0,Math.min(z,c.z1));
     return dx*dx+dz*dz<NAV_R*NAV_R;
@@ -1723,21 +1733,26 @@ function pathLength(path){
 function planCome(){
   const staff=inStaffArea();
   lib.path=(staff?[STAFF_EXIT]:[]).concat(findPath(staff?STAFF_EXIT:lib,player));
-  lib.speed=Math.max(6,pathLength(lib.path)/3.5);   /* 멀리 있어도 약 4초 안에 도착 */
+  lib.speed=6+Math.min(3,pathLength(lib.path)*0.15);   /* 뛰는 속도(5.4)보다 빠르고, 멀수록 더 서두름 */
 }
 function planBack(){
   const staff=inStaffArea();
   lib.path=(staff?[]:findPath(lib,STAFF_EXIT).concat([STAFF_EXIT])).concat([{x:SEAT.x,z:SEAT.z}]);
   lib.speed=Math.max(2.4,pathLength(lib.path)/7);
 }
-function startScold(){
+/* 뛰기 시작한 지 1~2초(판단 때마다 무작위) 뒤에 사서 선생님이 일어나 플레이어를 쫓아옴 */
+function startChase(){
+  lib.mode='rise';runTime=0;
+  toast('사서 선생님이 쫓아오고 있어요!',2500);
+}
+/* 따라잡히면 플레이어는 멈추고 사서 선생님이 말을 건넴 */
+function catchPlayer(){
   state='scold';
-  say(RUN_MSG);$('scold').hidden=true;
+  say(RUN_MSG);
   keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
   if(document.pointerLockElement)document.exitPointerLock();
   tipEl.hidden=true;canvas.style.cursor='default';
-  lib.mode='rise';
-  toast('사서 선생님이 달려오고 있어요!',2000);
+  talk();
 }
 /* 퀴즈를 다 풀기 전에 도난 방지 게이트 바닥판에 올라서면, 사서 선생님이 자리에 앉은 채로 알려 줌 */
 const RUN_MSG='친구!, 도서관에서 뛰면 안돼요!';
@@ -1789,19 +1804,27 @@ function follow(dt){
     if(d<=step){lib.x=p.x;lib.z=p.z;step-=d;lib.path.shift();}
     else{lib.x+=dx/d*step;lib.z+=dz/d*step;step=0;}
   }
-  lib.phase+=lib.speed*dt*2.2;
+  lib.phase+=Math.min(lib.speed,6)*dt*2.2;
 }
 function updateLibrarian(dt){
   let swing=0;
   if(lib.mode==='rise'){
     lib.sit=Math.max(0,lib.sit-dt*3.5);
-    if(lib.sit===0){planCome();lib.mode='come';}
+    if(lib.sit===0){lib.replan=0;lib.mode='come';}
   }else if(lib.mode==='come'){
-    follow(dt);
-    swing=Math.sin(lib.phase);
-    /* 아이 앞 1.35m까지 오면 멈춤 (서가나 책상 너머에서는 멈추지 않음) */
-    const near=Math.hypot(player.x-lib.x,player.z-lib.z)<=1.35&&!inStaffArea()&&clearLine(lib,player);
-    if(near||!lib.path.length){swing=0;talk();}
+    /* 플레이어가 움직이는 동안 0.25초마다 길을 다시 찾아 계속 쫓아옴. 퀴즈를 푸는 중에는 제자리에서 기다림 */
+    if(state==='play'){
+      const near=Math.hypot(player.x-lib.x,player.z-lib.z)<=1.35&&!inStaffArea()&&clearLine(lib,player);
+      if(near)catchPlayer();
+      else{
+        lib.replan-=dt;
+        if(lib.replan<=0||!lib.path.length){
+          planCome();lib.replan=0.25;
+          if(!lib.path.length)catchPlayer();
+        }
+        if(lib.mode==='come'){follow(dt);swing=Math.sin(lib.phase);}
+      }
+    }
   }else if(lib.mode==='talk'){
     lib.yaw=turnToward(lib.yaw,Math.atan2(player.x-lib.x,player.z-lib.z),dt*8);
   }else if(lib.mode==='back'){
@@ -1814,6 +1837,226 @@ function updateLibrarian(dt){
     if(lib.sit===1){lib.mode='sit';lib.yaw=SEAT.yaw;}
   }
   poseLibrarian(lib.x,lib.z,lib.yaw,lib.sit,swing);
+}
+
+/* =====================================================
+   열람객 7명 (판마다 무작위로 새로 생성)
+   sit    : 열람석 의자에 앉아 책을 읽음
+   wander : 서가에서 책을 꺼내 30초쯤 읽고, 책을 꽂은 뒤 다른 서가로 이동
+   aisle  : 서가 사이에 서서(또는 바닥에 앉아) 계속 책을 읽음
+===================================================== */
+const VISITOR_COUNT=7;
+const SKINS=[0xf1c7a5,0xe8b58f,0xd9a07a,0xc58c66,0x8d5a3c];
+const HAIRS=[0x2a1f1a,0x3a2a22,0x5a3b28,0x1b1b1f,0x8a6a45,0xa8a8a8,0x6b3a22];
+const TOPS=[0x3f6fb5,0xb5533f,0x6a9a4a,0xd2a63a,0x7a5aa5,0x3a8f8a,0xc9608a,0x55606b,0xe8e2d2,0x8a4b3a];
+const PANTS=[0x2f3a4a,0x4a3f35,0x3a4a3a,0x55535a,0x24282e,0x5a4a6a];
+const SHOES=[0x22262a,0x5a3a2a,0xe8e8e8];
+const HY=0.86;                                   /* 엉덩이 높이: 상체는 이 높이를 축으로 숙임 */
+const PBALL=new T.SphereGeometry(1,20,14);
+const SEATS=[];
+TABLES.forEach(function(p){
+  [-0.8,0.8].forEach(function(dx){
+    SEATS.push({x:p[0]+dx,z:p[1]+1.0,yaw:Math.PI});   /* 책상 쪽(-z)을 봄 */
+    SEATS.push({x:p[0]+dx,z:p[1]-1.0,yaw:0});         /* 책상 쪽(+z)을 봄 */
+  });
+});
+const visitors=[];
+function oneOf(a){return a[Math.floor(Math.random()*a.length)];}
+
+function makePerson(o){
+  const g=new T.Group(),upper=new T.Group();g.add(upper);
+  function orb(parent,color,rx,ry,rz,x,y,z){const m=new T.Mesh(PBALL,lam(color));m.scale.set(rx,ry,rz);m.position.set(x,y,z);parent.add(m);return m;}
+  const legs=[],arms=[];
+  [-1,1].forEach(function(s){
+    const hip=new T.Group();hip.position.set(s*0.1,HY,0);g.add(hip);
+    box(hip,0.15,0.46,0.15,o.pants,0,-0.2,0);
+    const knee=new T.Group();knee.position.set(0,-0.43,0);hip.add(knee);
+    box(knee,0.13,0.43,0.14,o.pants,0,-0.21,0);
+    box(knee,0.14,0.07,0.22,o.shoe,0,-0.43,0.04);
+    legs.push({hip:hip,knee:knee});
+    const arm=new T.Group();arm.position.set(s*0.275,1.4-HY,0);upper.add(arm);
+    box(arm,0.08,0.5,0.11,o.top,0,-0.23,0);
+    orb(arm,o.skin,0.045,0.055,0.045,0,-0.52,0.01);
+    arms.push(arm);
+    orb(upper,o.top,0.075,0.07,0.085,s*0.235,1.4-HY,0);
+  });
+  box(upper,0.44,0.6,0.24,o.top,0,1.15-HY,0);
+  box(upper,0.09,0.09,0.09,o.skin,0,1.49-HY,0);
+  orb(upper,o.skin,0.15,0.165,0.145,0,1.66-HY,0);
+  [-1,1].forEach(function(s){orb(upper,0x241a16,0.016,0.02,0.01,s*0.055,1.67-HY,0.14);});
+  if(o.style===3){
+    orb(upper,o.hair,0.158,0.095,0.152,0,1.77-HY,-0.01);
+  }else{
+    orb(upper,o.hair,0.168,0.13,0.163,0,1.755-HY,-0.02);
+    orb(upper,o.hair,0.16,0.17,0.09,0,1.66-HY,-0.085);
+    if(o.style===1)box(upper,0.3,0.4,0.07,o.hair,0,1.5-HY,-0.13);
+    if(o.style===2)orb(upper,o.hair,0.075,0.075,0.075,0,1.76-HY,-0.18);
+  }
+  /* 손에 든 책: 표지는 바깥쪽, 속지는 읽는 사람 쪽 */
+  const book=new T.Group();book.position.set(0,1.2-HY,0.44);book.rotation.x=-0.32;
+  box(book,0.2,0.27,0.03,o.bookColor,0,0,0);
+  box(book,0.185,0.25,0.02,0xf2eee0,0,0,-0.012);
+  book.visible=false;upper.add(book);
+  g.scale.setScalar(o.scale);
+  scene.add(g);
+  return {root:g,upper:upper,legs:legs,arms:arms,book:book,scale:o.scale};
+}
+function randomLook(){
+  const kid=Math.random()<0.2;
+  return {skin:oneOf(SKINS),hair:oneOf(HAIRS),style:Math.floor(Math.random()*4),top:oneOf(TOPS),pants:oneOf(PANTS),shoe:oneOf(SHOES),
+    bookColor:oneOf(bookPalette),scale:kid?0.74+Math.random()*0.08:0.94+Math.random()*0.1};
+}
+/* v.sit: 의자에 앉음 / v.floor: 바닥에 앉음 / v.arms: rest·read·reach / v.swing: 걸을 때 팔다리 흔들림 */
+function posePerson(v,dt,t){
+  const r=v.rig,s=r.scale,k=Math.min(1,dt*9);
+  const seated=v.sit>0||v.floor>0;
+  const drop=v.sit?HY-0.56/s:(v.floor?HY-0.08/s:0);
+  r.root.position.set(v.x,seated?0:Math.abs(v.swing)*0.03,v.z);
+  r.root.rotation.y=v.yaw;
+  r.upper.position.y=HY-drop;
+  r.upper.rotation.x=v.lean+Math.sin(t*1.2+v.ph)*0.012;
+  r.legs.forEach(function(l,i){
+    l.hip.position.y=HY-drop;
+    if(v.sit){l.hip.rotation.x=-Math.PI/2;l.knee.rotation.x=Math.PI/2;}
+    else if(v.floor){l.hip.rotation.x=-Math.PI/2;l.knee.rotation.x=0.1;}
+    else{const w=(i?-1:1)*v.swing;l.hip.rotation.x=w*0.75;l.knee.rotation.x=Math.max(0,w)*0.9;}
+  });
+  r.arms.forEach(function(a,i){
+    const sd=i?1:-1;
+    let tx=sd*v.swing*0.9,tz=0;
+    if(v.arms==='read'){tx=-1.15;tz=-sd*0.384;}
+    else if(v.arms==='reach'){if(i===1){tx=-1.5;tz=-0.1;}else tx=-0.2;}
+    a.rotation.x+=(tx-a.rotation.x)*k;a.rotation.z+=(tz-a.rotation.z)*k;
+  });
+  r.book.visible=v.book;
+  r.book.rotation.z=Math.sin(t*0.5+v.ph)*0.03;
+}
+/* 서가 앞에 설 자리 고르기. floor면 서가에 등을 대고 바닥에 앉을 자리 */
+function pickShelfSpot(self,floor){
+  const keys=Object.keys(unitSlots);
+  const stand=floor?0.18:0.1+0.55*self.scale;
+  for(let n=0;n<40;n++){
+    const key=oneOf(keys),sl=unitSlots[key];
+    if(visitors.some(function(o){return o!==self&&o.key===key;}))continue;
+    const nx=Math.sin(sl.rotY),nz=Math.cos(sl.rotY);
+    const x=sl.m.elements[12]+(Math.random()*1.6-0.8),z=sl.m.elements[14]+nz*(UD/2+stand);
+    if(floor?navBlocked(x+nx*0.57,z+nz*0.57):navBlocked(x,z))continue;
+    if(Object.keys(targets).some(function(id){const p=targets[id].pos;return Math.hypot(x-p.x,z-p.z)<1.4;}))continue;   /* 과제 도서를 가리지 않음 */
+    if(visitors.some(function(o){return o!==self&&Math.hypot(o.x-x,o.z-z)<1.4;}))continue;
+    return {x:x,z:z,yaw:floor?sl.rotY:sl.rotY+Math.PI,key:key};
+  }
+  return null;
+}
+function planWander(v){
+  for(let n=0;n<10;n++){
+    const sp=pickShelfSpot(v,false);
+    if(!sp||Math.hypot(sp.x-v.x,sp.z-v.z)<4)continue;
+    const path=findPath({x:v.x,z:v.z},{x:sp.x,z:sp.z});
+    if(!path.length)continue;
+    path.push({x:sp.x,z:sp.z});
+    v.path=path;v.goalYaw=sp.yaw;v.key=sp.key;v.mode='walk';v.wait=0;
+    return true;
+  }
+  return false;
+}
+function stepWalk(v,dt){
+  const speed=1.15,dxp=player.x-v.x,dzp=player.z-v.z;
+  if(v.path.length){
+    const p0=v.path[0];
+    /* 앞에 플레이어가 서 있으면 기다림 */
+    if(Math.hypot(dxp,dzp)<1.0&&dxp*(p0.x-v.x)+dzp*(p0.z-v.z)>0){
+      v.swing=0;v.wait+=dt;
+      if(v.wait>5){v.wait=0;planWander(v);}
+      return;
+    }
+    v.wait=0;
+    let step=speed*dt;
+    while(step>0&&v.path.length){
+      const p=v.path[0],dx=p.x-v.x,dz=p.z-v.z,d=Math.hypot(dx,dz);
+      if(d>1e-4)v.yaw=turnToward(v.yaw,Math.atan2(dx,dz),dt*8);
+      if(d<=step){v.x=p.x;v.z=p.z;step-=d;v.path.shift();}
+      else{v.x+=dx/d*step;v.z+=dz/d*step;step=0;}
+    }
+    v.phase+=speed*dt*5;v.swing=Math.sin(v.phase)*0.55;
+  }
+  if(!v.path.length){v.swing=0;v.mode='turn';}
+}
+/* 걷기 → 서가를 향해 돌아섬 → 책을 꺼냄 → 약 30초 읽음 → 책을 꽂음 → 다른 서가로 */
+function stepWander(v,dt){
+  v.swing=0;
+  if(v.mode==='read'){
+    v.t-=dt;
+    if(v.t<=0){v.mode='putback';v.t=1.2;v.arms='reach';}
+  }else if(v.mode==='putback'){
+    v.t-=dt;
+    if(v.t<0.7)v.book=false;
+    if(v.t<=0){
+      v.arms='rest';v.lean=0;
+      if(!planWander(v)){v.mode='read';v.t=6+Math.random()*6;v.arms='read';v.book=true;v.lean=0.12;}
+    }
+  }else if(v.mode==='walk'){
+    stepWalk(v,dt);
+  }else if(v.mode==='turn'){
+    v.yaw=turnToward(v.yaw,v.goalYaw,dt*7);
+    const d=Math.atan2(Math.sin(v.goalYaw-v.yaw),Math.cos(v.goalYaw-v.yaw));
+    if(Math.abs(d)<0.05){v.mode='reach';v.t=1.2;v.arms='reach';}
+  }else if(v.mode==='reach'){
+    v.t-=dt;
+    if(v.t<0.7&&!v.book){v.book=true;v.arms='read';v.lean=0.12;}
+    if(v.t<=0){v.mode='read';v.t=29+Math.random()*3;}
+  }
+}
+function placeOnSeat(v,seat){
+  v.x=seat.x-Math.sin(seat.yaw)*0.1;v.z=seat.z-Math.cos(seat.yaw)*0.1;
+  v.yaw=seat.yaw;v.sit=1;v.lean=0.1;v.arms='read';v.book=true;
+}
+function spawnVisitors(){
+  visitors.forEach(function(v){scene.remove(v.rig.root);});
+  visitors.length=0;extraObs.length=0;navGrid=null;
+  const kinds=['sit','wander','aisle'],plan=kinds.slice();
+  while(plan.length<VISITOR_COUNT)plan.push(oneOf(kinds));
+  shuffle(plan);
+  const seats=shuffle(SEATS.slice());
+  plan.forEach(function(kind){
+    const look=randomLook();
+    const v={kind:kind,rig:null,x:0,z:0,yaw:0,sit:0,floor:0,lean:0.12,arms:'read',book:true,swing:0,
+      phase:Math.random()*6,ph:Math.random()*6,mode:'read',t:3+Math.random()*26,path:[],key:null,wait:0,goalYaw:0,
+      scale:look.scale,col:{x:0,z:0,r:0.28}};
+    if(kind==='sit'&&seats.length){
+      v.rig=makePerson(look);placeOnSeat(v,seats.pop());
+    }else{
+      const floor=kind==='aisle'&&Math.random()<0.4;
+      let sp=null;
+      for(let n=0;n<25&&!sp;n++)sp=pickShelfSpot(v,floor);
+      if(sp){
+        v.rig=makePerson(look);
+        v.x=sp.x;v.z=sp.z;v.key=sp.key;v.yaw=sp.yaw;
+        if(floor){
+          v.floor=1;v.lean=0.05;
+          extraObs.push({x:v.x+Math.sin(v.yaw)*0.55,z:v.z+Math.cos(v.yaw)*0.55,r:0.5});   /* 길 찾기에서 다리 쪽을 피함 */
+        }
+      }else if(seats.length){
+        v.kind='sit';v.rig=makePerson(look);placeOnSeat(v,seats.pop());
+      }else return;
+    }
+    visitors.push(v);
+  });
+}
+function updateVisitors(dt,t){
+  visitors.forEach(function(v){
+    if(v.kind==='wander')stepWander(v,dt);
+    posePerson(v,dt,t);
+    if(v.floor){v.col.x=v.x+Math.sin(v.yaw)*0.55;v.col.z=v.z+Math.cos(v.yaw)*0.55;v.col.r=0.45;}
+    else{v.col.x=v.x;v.col.z=v.z;v.col.r=0.28;}
+  });
+}
+/* 플레이어가 열람객을 통과하지 못하게 밀어냄 */
+function pushOutVisitors(){
+  const R=0.38;
+  visitors.forEach(function(v){
+    const c=v.col,dx=player.x-c.x,dz=player.z-c.z,d=Math.hypot(dx,dz),m=R+c.r;
+    if(d<m){if(d>1e-4){player.x=c.x+dx/d*m;player.z=c.z+dz/d*m;}else player.x=c.x+m;}
+  });
 }
 
 let hoverId=null;
@@ -1841,12 +2084,12 @@ function update(dt,t){
     resolve();
     /* 달리기 키를 누른 채 실제로 빠르게 이동한 경우만 '뛰기'로 판단 */
     const running=isRunPressed()&&len>0.1&&dt>0&&Math.hypot(player.x-fromX,player.z-fromZ)/dt>3.6;
-    runTime=running?runTime+dt:0;
+    if(running)runTime+=dt;else{runTime=0;runLimit=1+Math.random();}
     const sp=Math.hypot(player.vx,player.vz);
     player.bob+=sp*dt*2.1;
     camera.position.set(player.x,1.65+Math.sin(player.bob)*0.022*Math.min(1,sp/3),player.z);
     if(doneCount()<BOOKS.length&&onGate())startGateWarning();
-    else if(runTime>0.15)startScold();
+    else if(runTime>=runLimit&&(lib.mode==='sit'||lib.mode==='back'||lib.mode==='sitdown'))startChase();
   }else if(state==='gate'){
     /* 자리에 앉아 있는 선생님 쪽으로 시선을 돌림 */
     const dx=lib.x-player.x,dz=lib.z-player.z;
@@ -1864,6 +2107,7 @@ function update(dt,t){
     camera.position.set(player.x,1.65,player.z);
   }
   updateLibrarian(dt);
+  updateVisitors(dt,t);
   camera.rotation.set(player.pitch,player.yaw,0);
 
   /* 책 반짝임과 호버 */
@@ -2039,6 +2283,7 @@ function restartGame(){
   endShown=false;
   BOOKS=pickBooks();
   SPEC=placeAllTargets();
+  spawnVisitors();
   renderMission();
   keys.clear();endJoy();resetPad();ptrs.clear();hoverId=null;
   player.x=SPAWN.x;player.z=SPAWN.z;player.yaw=0;player.pitch=0;player.vx=player.vz=0;
@@ -2089,6 +2334,7 @@ if(window.matchMedia){
 }
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(redrawSigns);
 
+spawnVisitors();
 renderMission();
 let last=performance.now(),tAcc=0;
 function loop(now){
