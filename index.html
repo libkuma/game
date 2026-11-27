@@ -60,10 +60,11 @@ body.is-play .hud{display:block}
 .m-new:hover,.m-new.confirm{background:var(--accent);color:#04201c}
 .m-new:focus-visible,.m-head:focus-visible,.btn:focus-visible,.opt:focus-visible,.btn-float:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .m-head b{color:var(--gold);font-variant-numeric:tabular-nums}
-.chev{transition:transform .2s;color:var(--muted)}
-#mission.closed .chev{transform:rotate(-90deg)}
+.chev{flex:none;padding:3px 8px;border:1px solid var(--line);border-radius:99px;background:rgba(255,255,255,.07);color:var(--fg);font-size:11.5px;font-weight:700;line-height:1.5;white-space:nowrap}
+.chev::after{content:"접기 ▴"}
+#mission.closed .chev::after{content:"펼치기 ▾"}
 #mList{list-style:none;margin:0;padding:2px 8px 6px;border-top:1px solid var(--line)}
-#mission.closed #mList,#mission.closed .m-foot{display:none}
+#mission.closed #mList{display:none}
 #mList li{display:grid;grid-template-columns:18px 1fr auto auto;align-items:center;gap:8px;padding:6px 4px;font-size:13px}
 #mList .st{width:16px;height:16px;border:1.5px solid var(--muted);border-radius:50%;display:grid;place-items:center;font-size:10px;line-height:1;color:#04201c}
 #mList li.locked .nm{color:var(--muted);opacity:.65}
@@ -168,6 +169,17 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 #end ul{list-style:none;margin:0 0 22px;padding:0;border-top:1px solid var(--line)}
 #end li{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid var(--line);font-size:14px}
 #end li span:last-child{color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* ---------- 사서 선생님 말풍선 ---------- */
+.scold{
+  position:fixed;z-index:35;left:50%;transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 56px);
+  width:min(440px,calc(100vw - 32px));padding:18px 22px 20px;text-align:center;
+  background:var(--paper);color:var(--ink);border:3px solid #c0652d;border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.scold .s-name{margin:0 0 4px;font-size:13px;font-weight:700;color:#a8521f}
+.scold .s-text{margin:0 0 14px;font:700 21px/1.5 var(--book);text-wrap:balance}
+.scold .btn{min-width:120px;background:var(--brand);border-color:var(--brand);color:#fff}
 
 /* ---------- 펼쳐지는 책 ---------- */
 #quiz{padding:0;background:rgba(5,12,16,.72)}
@@ -278,10 +290,7 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
   #map{width:116px}
   .panel{padding:22px 20px}
   .panel h1{font-size:30px}
-  #mission.closed{width:max-content;max-width:calc(100vw - 170px)}
-  #mission.closed .m-top{flex-wrap:wrap;padding:0}
-  #mission.closed .m-top .m-head{flex:1 0 100%}
-  #mission.closed .m-new{margin:0 8px 8px;flex:1}
+  #mission.closed{max-width:calc(100vw - 170px)}
   .book{--bw:94vw;--bh:min(88vh,720px);transform:translateY(36px) scale(.8) rotateX(14deg)}
   .book.show{transform:scale(1)}
   .book.flip{transform:scale(1)}
@@ -296,6 +305,29 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 /* 좁은 화면: 펼친 목록이 지도를 가리지 않도록 지도 아래에 표시 */
 @media (max-width:700px){
   #mission:not(.closed){top:calc(env(safe-area-inset-top,0px) + 128px)}
+}
+/* 축소 상태: 제목 / 점수 + 새로 시작하기 만 표시 */
+#mission.closed{display:grid;grid-template-columns:1fr auto;align-items:center;width:232px}
+#mission.closed .m-top{display:contents}
+#mission.closed .m-head{grid-column:1/-1;grid-row:1;width:100%;padding:9px 10px;gap:6px}
+#mission.closed .m-foot{grid-column:1;grid-row:2;padding:8px 6px 8px 10px;white-space:nowrap}
+#mission.closed .m-new{grid-column:2;grid-row:2;margin:6px 8px 6px 0;align-self:center}
+#mission.closed .m-foot{border-top:0}
+#mission.closed .m-head{border-bottom:1px solid var(--line)}
+/* 손가락으로 누르기 쉬운 크기 */
+body.touch .m-head{min-height:44px}
+body.touch .m-new{min-height:36px}
+body.touch .chev{padding:5px 10px}
+@media (max-width:400px){
+  #mission.closed{font-size:13px}
+  #mission.closed .m-head{padding:9px 8px;gap:4px}
+  #mission.closed .chev{padding-left:6px;padding-right:6px;font-size:11px}
+  #mission.closed .m-foot{padding-left:8px;font-size:12.5px}
+  #mission.closed .m-new{margin-right:6px;padding-left:6px;padding-right:6px;font-size:11.5px}
+}
+/* 아주 좁은 화면은 접은 창도 지도 아래에 표시 */
+@media (max-width:355px){
+  #mission.closed{top:calc(env(safe-area-inset-top,0px) + 128px);max-width:calc(100vw - 32px)}
 }
 /* 펼친 목록이 화면보다 길면 목록 안에서 스크롤 */
 #mList{max-height:calc(100vh - 250px);overflow-y:auto}
@@ -315,7 +347,7 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 <aside id="mission" class="glass hud">
   <div class="m-top">
     <button id="btnList" class="m-head" type="button" aria-expanded="true" aria-controls="mList">
-      <span>찾아야 할 책 <b id="mCount">0 / 8</b></span><span class="chev">▾</span>
+      <span>찾아야 할 책 <b id="mCount">0 / 8</b></span><span class="chev" aria-hidden="true"></span>
     </button>
     <button id="btnNew" class="m-new" type="button">새로 시작하기</button>
   </div>
@@ -330,6 +362,12 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 <button id="btnLock" class="btn-float" type="button">마우스 시점 고정</button>
 <div id="joy" aria-hidden="true"><div class="knob"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
+
+<div id="scold" class="scold" hidden role="alertdialog" aria-labelledby="scoldName" aria-describedby="scoldText">
+  <p class="s-name" id="scoldName">사서 선생님</p>
+  <p class="s-text" id="scoldText">친구!, 도서관에서 뛰면 안돼요!</p>
+  <button id="btnYes" class="btn primary big" type="button">네</button>
+</div>
 
 <div id="start" class="overlay">
   <div class="panel">
@@ -986,18 +1024,202 @@ function table(x,z){
   scene.add(g);
   addCol(x-1.7,x+1.7,z-0.8,z+0.8,0.8,'rgba(210,180,130,.55)');
 }
-[[-11,5.6],[-3.7,5.6],[3.7,5.6],[11,5.6],[-11,9.6],[-3.7,9.6],[3.7,9.6]].forEach(function(p){table(p[0],p[1]);});
+[[-11,5.6],[-3.7,5.6],[3.7,5.6],[11,5.6],[-11,9.6],[-3.7,9.6],[11,9.6]].forEach(function(p){table(p[0],p[1]);});
 
-/* 대출·반납 데스크 */
+/* =====================================================
+   출입문 앞의 도서 도난 방지 게이트
+   양쪽 패널(은색 받침 + 은색 기둥 + 반투명 아크릴 3단)과 이어주는 바닥판
+===================================================== */
+const SPAWN={x:0,z:11.2};
+const GATE={z:13.2,half:0.9};
 (function(){
-  const g=new T.Group();g.position.set(11.2,0,10.9);
-  box(g,5,1.0,1.1,0x4a3b31,0,0.5,0);box(g,5.2,0.06,1.3,0xc9a574,0,1.03,0);
-  box(g,0.55,0.34,0.03,0x1a2428,-1.1,1.38,0.1);box(g,0.06,0.2,0.06,0x1a2428,-1.1,1.2,0.1);
-  box(g,0.3,0.06,0.22,0x6a4fb0,1.2,1.09,0.1);box(g,0.28,0.06,0.2,0xc0652d,1.2,1.15,0.1);
+  const g=new T.Group();g.position.set(0,0,GATE.z);
+  const silver=0xb9bfc3,base=0x9aa1a6,dark=0x4a5257,rail=0xe8eef0;
+  const acrylic=new T.MeshBasicMaterial({color:0xeef8fb,transparent:true,opacity:0.22,depthWrite:false,side:T.DoubleSide});
+  const postGeo=new T.CylinderGeometry(0.045,0.045,1,16);
+  function post(x,z,h){
+    const p=new T.Mesh(postGeo,lam(silver));p.scale.y=h;p.position.set(x,h/2+0.03,z);g.add(p);
+    box(g,0.095,0.045,0.095,dark,x,h+0.05,z);
+  }
+  box(g,GATE.half*2+0.16,0.025,0.86,0x8d9498,0,0.028,0);   /* 바닥판 */
+  [-1,1].forEach(function(side){
+    const x=side*GATE.half;
+    box(g,0.13,0.56,0.78,base,x,0.32,0);                    /* 받침 */
+    box(g,0.145,0.04,0.8,silver,x,0.62,0);
+    box(g,0.012,0.045,0.14,dark,x-side*0.07,0.43,0);        /* 감지기 표시창 */
+    post(x,0.42,1.22);post(x,-0.42,1.22);                   /* 앞뒤 기둥 */
+    const pane=new T.Mesh(unitBox,acrylic);                 /* 아크릴 패널 */
+    pane.scale.set(0.03,1.42,0.76);pane.position.set(x,1.35,0);g.add(pane);
+    [0.65,1.12,1.59,2.06].forEach(function(y){box(g,0.04,0.022,0.76,rail,x,y,0);});
+    box(g,0.04,1.42,0.018,rail,x,1.35,0.38);box(g,0.04,1.42,0.018,rail,x,1.35,-0.38);
+    addCol(x-0.08,x+0.08,GATE.z-0.46,GATE.z+0.46,0.65,'rgba(220,230,235,.95)');
+  });
   scene.add(g);
-  addCol(8.6,13.8,10.25,11.55,1.1,'rgba(210,180,130,.55)');
-  hangSign(11.2,3.2,10.9,0,textSign('대출 · 반납','#16424a',92,512,144),2.4,0.68);
 })();
+
+/* =====================================================
+   대출·반납 데스크와 사서 선생님 (시작 지점 오른쪽)
+===================================================== */
+const DESK={x:3.4,z:10.8};
+const DESK_TOP=1.06;
+/* 모서리가 둥근 판: 가로 w, 세로 h, 두께 d (xy 평면, 두께 방향 z) */
+function roundedSlab(w,h,r,d,color){
+  const x=-w/2,y=-h/2,sh=new T.Shape();
+  sh.moveTo(x+r,y);sh.lineTo(x+w-r,y);sh.quadraticCurveTo(x+w,y,x+w,y+r);
+  sh.lineTo(x+w,y+h-r);sh.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  sh.lineTo(x+r,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-r);
+  sh.lineTo(x,y+r);sh.quadraticCurveTo(x,y,x+r,y);
+  const geo=new T.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false,curveSegments:8});
+  geo.translate(0,0,-d/2);
+  return new T.Mesh(geo,lam(color));
+}
+/* 컴퓨터 모니터: 선생님 바로 앞. 화면은 선생님 쪽, 얼굴이 가려지지 않게 낮게 둠 */
+function addMonitor(){
+  const g=new T.Group();g.position.set(DESK.x+0.12,DESK_TOP,DESK.z+0.15);
+  /* 화면과 받침은 처음 크기의 1.5배. 얼굴이 덜 가려지도록 목 높이는 낮춤 */
+  box(g,0.27,0.022,0.33,0x1a2428,0,0.011,0);
+  box(g,0.05,0.06,0.09,0x1a2428,0,0.04,0);
+  box(g,0.045,0.405,0.69,0x1a2428,0,0.2425,0);
+  const screen=new T.Mesh(new T.PlaneGeometry(0.645,0.36),new T.MeshBasicMaterial({color:0x9fd4e6}));
+  screen.rotation.y=Math.PI/2;screen.position.set(0.025,0.2425,0);g.add(screen);
+  scene.add(g);
+}
+/* RFID 인식기: 은색 테두리 위의 얇은 검은 판, 모서리 표시와 가운데 전파 무늬 */
+function addRfidPad(){
+  const g=new T.Group();g.position.set(DESK.x-0.02,DESK_TOP,DESK.z+1.17);g.rotation.y=-Math.PI/2;
+  function flat(m,y){m.rotation.x=-Math.PI/2;m.position.y=y;g.add(m);}
+  flat(roundedSlab(0.62,0.46,0.045,0.014,0xc9ced2),0.008);   /* 은색 받침 테두리 */
+  flat(roundedSlab(0.605,0.445,0.04,0.014,0x0b0c0e),0.022);  /* 검은 윗판 */
+  const tex=makeSign(function(c,cw,ch){
+    c.clearRect(0,0,cw,ch);
+    c.strokeStyle='#e8edf0';c.lineCap='round';c.lineJoin='round';
+    c.lineWidth=7;
+    [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(function(s){
+      const px=cw/2-s[0]*(cw/2-42),py=ch/2-s[1]*(ch/2-40);
+      c.beginPath();c.moveTo(px+s[0]*46,py);c.quadraticCurveTo(px,py,px,py+s[1]*46);c.stroke();
+    });
+    c.lineWidth=6;c.beginPath();c.arc(cw/2,ch/2,13,0,Math.PI*2);c.stroke();
+    c.lineWidth=11;
+    [58,102,146].forEach(function(r){
+      [-Math.PI/2,Math.PI/2].forEach(function(a){c.beginPath();c.arc(cw/2,ch/2,r,a-0.66,a+0.66);c.stroke();});
+    });
+  },620,460);
+  flat(new T.Mesh(new T.PlaneGeometry(0.6,0.445),new T.MeshBasicMaterial({map:tex,transparent:true})),0.0305);
+  box(g,0.012,0.008,0.012,0x2ecc71,0.306,0.016,0.06);        /* 옆면 상태 표시등 */
+  scene.add(g);
+  /* 반납 도서: 인식기 위에 올려 둠 (인식기보다 작게) */
+  const books=new T.Group();books.position.set(DESK.x-0.02,DESK_TOP+0.03,DESK.z+1.17);
+  box(books,0.2,0.05,0.27,0x6a4fb0,0,0.025,0);box(books,0.18,0.05,0.25,0xc0652d,0,0.075,0);
+  scene.add(books);
+}
+/* 탁상형 바코드 스캐너: 받침, 목, 둥근 머리. 붉은 빛이 나는 앞면(+z)이 시작 지점을 향함 */
+function addScanner(){
+  const g=new T.Group();g.position.set(DESK.x-0.2,DESK_TOP,DESK.z+0.65);
+  g.rotation.y=Math.atan2(SPAWN.x-g.position.x,SPAWN.z-g.position.z);
+  g.scale.set(1/1.5,1/1.5,1/1.5);                            /* 전체 크기를 1.5배 줄임 */
+  const body=0x17181b,edge=0x25272c;
+  const foot=roundedSlab(0.2,0.2,0.04,0.035,body);foot.rotation.x=-Math.PI/2;foot.position.y=0.018;g.add(foot);
+  box(g,0.085,0.075,0.065,edge,0,0.07,-0.01);                /* 목 */
+  const head=new T.Group();head.position.set(0,0.23,0);head.rotation.x=-0.1;g.add(head);
+  head.add(roundedSlab(0.19,0.27,0.06,0.11,body));
+  function face(w,h,color,y,z){
+    const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:color,fog:false}));
+    m.position.set(0,y,z);head.add(m);return m;
+  }
+  face(0.145,0.125,0x3a0a0c,0.045,0.0565);                   /* 인식창 */
+  face(0.12,0.05,0x8d5a5c,0.018,0.0572);                     /* 반사판 */
+  const dot=new T.SphereGeometry(0.011,12,10),red=new T.MeshBasicMaterial({color:0xff2a22,fog:false});
+  [-0.038,0,0.038].forEach(function(x){
+    const m=new T.Mesh(dot,red);m.position.set(x,0.078,0.061);head.add(m);
+    const glow=new T.Sprite(new T.SpriteMaterial({map:glowTex,color:0xff3020,transparent:true,opacity:0.85,depthWrite:false,blending:T.AdditiveBlending}));
+    glow.scale.set(0.07,0.07,1);glow.position.set(x,0.078,0.068);head.add(glow);
+  });
+  face(0.1,0.006,0x9aa0a6,-0.055,0.0565);face(0.075,0.005,0x6d737a,-0.07,0.0565);  /* 안내 문구 자리 */
+  box(head,0.03,0.008,0.02,0xd8302a,0,0.137,0);              /* 윗면 표시등 */
+  scene.add(g);
+}
+(function(){
+  /* 데스크: 긴 면이 입구 통로(-x 방향)를 바라봄 */
+  const g=new T.Group();g.position.set(DESK.x,0,DESK.z);
+  box(g,0.9,1.0,2.8,0x4a3b31,0,0.5,0);box(g,1.1,0.06,3.0,0xc9a574,0,1.03,0);
+  scene.add(g);
+  addMonitor();addRfidPad();addScanner();
+  const front=new T.Mesh(new T.PlaneGeometry(1.7,0.42),new T.MeshBasicMaterial({map:textSign('대출 · 반납','#16424a',92,512,128)}));
+  front.rotation.y=-Math.PI/2;front.position.set(DESK.x-0.456,0.62,DESK.z);scene.add(front);
+  /* 천장 표지판은 시작 지점을 향하도록 비스듬히 */
+  hangSign(DESK.x,3.0,DESK.z,Math.atan2(SPAWN.x-DESK.x,SPAWN.z-DESK.z),textSign('대출 · 반납','#16424a',92,512,144),1.9,0.54);
+  addCol(DESK.x-0.55,DESK.x+1.5,DESK.z-1.5,DESK.z+1.5,1.1,'rgba(210,180,130,.75)');
+})();
+
+/* 사서 선생님: 데스크 뒤 의자에 앉아 있음 (+z가 정면). 다리와 팔은 관절로 움직임 */
+const SEAT={x:DESK.x+1.05,z:DESK.z+0.15,yaw:-Math.PI/2};
+/* 사서 의자 */
+(function(){
+  const g=new T.Group();g.position.set(SEAT.x,0,SEAT.z);g.rotation.y=SEAT.yaw;
+  const fab=0x8c3b3b,metal=0x30363b;
+  box(g,0.48,0.07,0.42,fab,0,0.565,0.02);                     /* 앉는 판 */
+  box(g,0.46,0.46,0.06,fab,0,0.95,-0.22);                     /* 등받이 */
+  box(g,0.06,0.34,0.04,metal,0,0.68,-0.22);
+  box(g,0.07,0.5,0.07,metal,0,0.28,-0.02);                    /* 기둥 */
+  box(g,0.56,0.05,0.07,metal,0,0.035,-0.02);box(g,0.07,0.05,0.56,metal,0,0.035,-0.02);
+  box(g,0.04,0.03,0.46,metal,0,0.15,0.2);box(g,0.44,0.03,0.18,metal,0,0.155,0.45);  /* 발 받침 */
+  scene.add(g);
+})();
+const rig=(function(){
+  const g=new T.Group(),upper=new T.Group();g.add(upper);
+  const skin=0xf1c7a5,hair=0x3a2a22,cardigan=0x2f7d74,shirt=0xf4f1e8,pants=0x34404a,shoe=0x22262a,frame=0x23282c;
+  const ball=new T.SphereGeometry(1,24,18);
+  function orb(parent,color,rx,ry,rz,x,y,z){const m=new T.Mesh(ball,lam(color));m.scale.set(rx,ry,rz);m.position.set(x,y,z);parent.add(m);return m;}
+  const legs=[],arms=[];
+  [-1,1].forEach(function(s){
+    const hip=new T.Group();hip.position.set(s*0.1,0.86,0);g.add(hip);
+    box(hip,0.15,0.46,0.15,pants,0,-0.2,0);                   /* 허벅지 */
+    const knee=new T.Group();knee.position.set(0,-0.43,0);hip.add(knee);
+    box(knee,0.13,0.43,0.14,pants,0,-0.21,0);                 /* 종아리 */
+    box(knee,0.14,0.07,0.22,shoe,0,-0.43,0.04);               /* 신발 */
+    legs.push({hip:hip,knee:knee});
+    const arm=new T.Group();arm.position.set(s*0.275,1.4,0);upper.add(arm);
+    box(arm,0.08,0.5,0.11,cardigan,0,-0.23,0);
+    orb(arm,skin,0.045,0.055,0.045,0,-0.52,0.01);             /* 손 */
+    arms.push(arm);
+    orb(upper,cardigan,0.075,0.07,0.085,s*0.235,1.4,0);       /* 어깨 */
+  });
+  box(upper,0.44,0.6,0.24,cardigan,0,1.15,0);                 /* 몸통 */
+  box(upper,0.13,0.4,0.012,shirt,0,1.25,0.122);               /* 셔츠 */
+  box(upper,0.11,0.05,0.012,0xf0b94a,0.13,1.3,0.13);          /* 이름표 */
+  box(upper,0.09,0.09,0.09,skin,0,1.49,0);                    /* 목 */
+  orb(upper,skin,0.15,0.165,0.145,0,1.66,0);                  /* 머리 */
+  orb(upper,hair,0.168,0.13,0.163,0,1.755,-0.02);             /* 머리카락 */
+  orb(upper,hair,0.16,0.17,0.09,0,1.66,-0.085);
+  orb(upper,hair,0.075,0.075,0.075,0,1.76,-0.18);             /* 묶은 머리 */
+  [-1,1].forEach(function(s){
+    orb(upper,0x241a16,0.016,0.02,0.01,s*0.055,1.67,0.14);    /* 눈 */
+    const x=s*0.058;                                          /* 안경 */
+    box(upper,0.082,0.009,0.008,frame,x,1.704,0.155);box(upper,0.082,0.009,0.008,frame,x,1.638,0.155);
+    box(upper,0.009,0.074,0.008,frame,x-0.037,1.671,0.155);box(upper,0.009,0.074,0.008,frame,x+0.037,1.671,0.155);
+  });
+  box(upper,0.036,0.009,0.008,frame,0,1.68,0.155);
+  box(upper,0.06,0.012,0.01,0xb5545a,0,1.595,0.137);          /* 입 */
+  /* 머리 위 이름표 */
+  const label=new T.Sprite(new T.SpriteMaterial({map:textSign('사서 선생님','#c0652d',66,512,112),transparent:true}));
+  label.scale.set(0.78,0.17,1);label.position.set(0,2.1,0);upper.add(label);
+  scene.add(g);
+  return {root:g,upper:upper,legs:legs,arms:arms};
+})();
+/* sit: 1=앉음, 0=서 있음 / swing: 걷거나 뛸 때의 팔다리 흔들림(-1~1) */
+function poseLibrarian(x,z,yaw,sit,swing){
+  rig.root.position.set(x,Math.abs(swing)*0.04,z);rig.root.rotation.y=yaw;
+  const drop=0.2*sit;
+  rig.upper.position.set(0,-drop,0);
+  rig.legs.forEach(function(l,i){
+    const w=(i?-1:1)*swing;
+    l.hip.position.y=0.86-drop;
+    l.hip.rotation.x=-Math.PI/2*sit+w*0.75;
+    l.knee.rotation.x=Math.PI/2*sit+Math.max(0,w)*0.9;
+  });
+  rig.arms.forEach(function(a,i){a.rotation.x=-0.55*sit+(i?1:-1)*swing*0.9;});
+}
+poseLibrarian(SEAT.x,SEAT.z,SEAT.yaw,1,0);
 
 /* 화분 */
 function plant(x,z){
@@ -1015,9 +1237,9 @@ function plant(x,z){
    상태와 진행
 ===================================================== */
 let state='start';
+let runTime=0;
 const results={};
 let endShown=false;
-const SPAWN={x:0,z:12.4};
 const player={x:SPAWN.x,z:SPAWN.z,yaw:0,pitch:0,vx:0,vz:0,bob:0};
 function totalCorrect(){let s=0;for(const k in results)s+=results[k].best;return s;}
 function doneCount(){return Object.keys(results).length;}
@@ -1224,6 +1446,167 @@ function resolve(){
     }
   }
 }
+/* =====================================================
+   도서관에서 뛰면 사서 선생님이 달려오는 기능
+   sit(앉음) → rise(일어남) → come(달려옴) → talk(말하기) → back(돌아감) → sitdown(앉음)
+===================================================== */
+const lib={mode:'sit',x:SEAT.x,z:SEAT.z,yaw:SEAT.yaw,sit:1,phase:0,path:[],speed:0};
+const STAFF_EXIT={x:DESK.x+2.1,z:SEAT.z};     /* 데스크 안쪽에서 드나드는 지점 */
+const NAV=0.25,NAV_R=0.28,NX=Math.round(W/NAV),NZ=Math.round(D/NAV);
+function navBlocked(x,z){
+  if(x<-W/2+0.4||x>W/2-0.4||z<-D/2+0.4||z>D/2-0.4)return true;
+  return colliders.some(function(c){
+    const dx=x-Math.max(c.x0,Math.min(x,c.x1)),dz=z-Math.max(c.z0,Math.min(z,c.z1));
+    return dx*dx+dz*dz<NAV_R*NAV_R;
+  });
+}
+function clearLine(a,b){
+  const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/0.1));
+  for(let i=1;i<=n;i++)if(navBlocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n))return false;
+  return true;
+}
+/* 서가와 책상을 피해 가는 길 찾기 (격자 너비 우선 탐색 후 꺾이는 점만 남김) */
+let navGrid=null;
+function findPath(from,to){
+  if(!navGrid){
+    navGrid=new Uint8Array(NX*NZ);
+    for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++)navGrid[j*NX+i]=navBlocked(-W/2+(i+0.5)*NAV,-D/2+(j+0.5)*NAV)?1:0;
+  }
+  function point(k){return {x:-W/2+(k%NX+0.5)*NAV,z:-D/2+(Math.floor(k/NX)+0.5)*NAV};}
+  function nearest(p){
+    let best=-1,bd=1e9;
+    for(let k=0;k<NX*NZ;k++){
+      if(navGrid[k])continue;
+      const q=point(k),d=(q.x-p.x)*(q.x-p.x)+(q.z-p.z)*(q.z-p.z);
+      if(d<bd){bd=d;best=k;}
+    }
+    return best;
+  }
+  const start=nearest(from),goal=nearest(to);
+  const prev=new Int32Array(NX*NZ).fill(-1),queue=[start];prev[start]=start;
+  for(let h=0;h<queue.length&&prev[goal]<0;h++){
+    const k=queue[h],i=k%NX,j=Math.floor(k/NX);
+    [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].forEach(function(d){
+      const a=i+d[0],b=j+d[1],n=b*NX+a;
+      if(a<0||b<0||a>=NX||b>=NZ||prev[n]>=0||navGrid[n])return;
+      if(d[0]&&d[1]&&(navGrid[j*NX+a]||navGrid[b*NX+i]))return;
+      prev[n]=k;queue.push(n);
+    });
+  }
+  if(prev[goal]<0)return [];
+  const cells=[];for(let k=goal;k!==start;k=prev[k])cells.push(point(k));
+  cells.push(point(start));cells.reverse();
+  const out=[cells[0]];
+  let at=0;
+  while(at<cells.length-1){
+    let next=cells.length-1;
+    while(next>at+1&&!clearLine(cells[at],cells[next]))next--;
+    out.push(cells[next]);at=next;
+  }
+  return out;
+}
+function inStaffArea(){return lib.x>DESK.x+0.5&&lib.x<STAFF_EXIT.x-0.05&&Math.abs(lib.z-DESK.z)<1.6;}
+function pathLength(path){
+  let len=0,a=lib;
+  path.forEach(function(p){len+=Math.hypot(p.x-a.x,p.z-a.z);a=p;});
+  return len;
+}
+function planCome(){
+  const staff=inStaffArea();
+  lib.path=(staff?[STAFF_EXIT]:[]).concat(findPath(staff?STAFF_EXIT:lib,player));
+  lib.speed=Math.max(6,pathLength(lib.path)/3.5);   /* 멀리 있어도 약 4초 안에 도착 */
+}
+function planBack(){
+  const staff=inStaffArea();
+  lib.path=(staff?[]:findPath(lib,STAFF_EXIT).concat([STAFF_EXIT])).concat([{x:SEAT.x,z:SEAT.z}]);
+  lib.speed=Math.max(2.4,pathLength(lib.path)/7);
+}
+function startScold(){
+  state='scold';
+  say(RUN_MSG);$('scold').hidden=true;
+  keys.clear();endJoy();ptrs.clear();player.vx=player.vz=0;runTime=0;
+  if(document.pointerLockElement)document.exitPointerLock();
+  tipEl.hidden=true;canvas.style.cursor='default';
+  lib.mode='rise';
+  toast('사서 선생님이 달려오고 있어요!',2000);
+}
+/* 퀴즈를 다 풀기 전에 도난 방지 게이트 바닥판에 올라서면, 사서 선생님이 자리에 앉은 채로 알려 줌 */
+const RUN_MSG='친구!, 도서관에서 뛰면 안돼요!';
+const GATE_MSG='친구!, 퀴즈를 다 풀지 않으면 나갈 수 없어요.';
+function say(msg){$('scoldText').textContent=msg;}
+function onGate(){return Math.abs(player.x)<GATE.half&&Math.abs(player.z-GATE.z)<0.43;}
+function startGateWarning(){
+  resetLibrarian();                       /* 자리에 앉은 상태 */
+  state='gate';
+  keys.clear();endJoy();ptrs.clear();player.vx=player.vz=0;
+  if(document.pointerLockElement)document.exitPointerLock();
+  tipEl.hidden=true;canvas.style.cursor='default';
+  $('toast').classList.remove('show');
+  say(GATE_MSG);$('scold').hidden=false;
+  $('btnYes').focus({preventScroll:true});
+}
+function talk(){
+  lib.mode='talk';lib.path=[];
+  $('toast').classList.remove('show');
+  $('scold').hidden=false;
+  $('btnYes').focus({preventScroll:true});
+}
+$('btnYes').addEventListener('click',function(){
+  if(state==='gate'){
+    this.blur();
+    $('scold').hidden=true;
+    /* 게이트 앞(도서관 안쪽)으로 돌아와 서가를 바라봄 */
+    player.x=0;player.z=GATE.z-1.0;player.yaw=0;player.pitch=0;
+    state='play';keys.clear();canvas.style.cursor='grab';
+    return;
+  }
+  if(state!=='scold')return;
+  this.blur();
+  $('scold').hidden=true;
+  planBack();lib.mode='back';
+  state='play';keys.clear();canvas.style.cursor='grab';
+});
+function resetLibrarian(){
+  lib.mode='sit';lib.x=SEAT.x;lib.z=SEAT.z;lib.yaw=SEAT.yaw;lib.sit=1;lib.path=[];runTime=0;
+  $('scold').hidden=true;
+  poseLibrarian(lib.x,lib.z,lib.yaw,1,0);
+}
+function turnToward(from,to,k){return from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*Math.min(1,k);}
+function follow(dt){
+  let step=lib.speed*dt;
+  while(step>0&&lib.path.length){
+    const p=lib.path[0],dx=p.x-lib.x,dz=p.z-lib.z,d=Math.hypot(dx,dz);
+    if(d>1e-4)lib.yaw=turnToward(lib.yaw,Math.atan2(dx,dz),dt*14);
+    if(d<=step){lib.x=p.x;lib.z=p.z;step-=d;lib.path.shift();}
+    else{lib.x+=dx/d*step;lib.z+=dz/d*step;step=0;}
+  }
+  lib.phase+=lib.speed*dt*2.2;
+}
+function updateLibrarian(dt){
+  let swing=0;
+  if(lib.mode==='rise'){
+    lib.sit=Math.max(0,lib.sit-dt*3.5);
+    if(lib.sit===0){planCome();lib.mode='come';}
+  }else if(lib.mode==='come'){
+    follow(dt);
+    swing=Math.sin(lib.phase);
+    /* 아이 앞 1.35m까지 오면 멈춤 (서가나 책상 너머에서는 멈추지 않음) */
+    const near=Math.hypot(player.x-lib.x,player.z-lib.z)<=1.35&&!inStaffArea()&&clearLine(lib,player);
+    if(near||!lib.path.length){swing=0;talk();}
+  }else if(lib.mode==='talk'){
+    lib.yaw=turnToward(lib.yaw,Math.atan2(player.x-lib.x,player.z-lib.z),dt*8);
+  }else if(lib.mode==='back'){
+    follow(dt);
+    swing=Math.sin(lib.phase)*0.6;
+    if(!lib.path.length){swing=0;lib.mode='sitdown';}
+  }else if(lib.mode==='sitdown'){
+    lib.yaw=turnToward(lib.yaw,SEAT.yaw,dt*8);
+    lib.sit=Math.min(1,lib.sit+dt*2.2);
+    if(lib.sit===1){lib.mode='sit';lib.yaw=SEAT.yaw;}
+  }
+  poseLibrarian(lib.x,lib.z,lib.yaw,lib.sit,swing);
+}
+
 let hoverId=null;
 const tipEl=$('tip');
 function update(dt,t){
@@ -1242,15 +1625,34 @@ function update(dt,t){
     const tvx=(-sy*mz+cy*mx)*speed,tvz=(-cy*mz-sy*mx)*speed;
     const k=Math.min(1,dt*10);
     player.vx+=(tvx-player.vx)*k;player.vz+=(tvz-player.vz)*k;
+    const fromX=player.x,fromZ=player.z;
     player.x+=player.vx*dt;player.z+=player.vz*dt;
     resolve();
+    /* 달리기 키를 누른 채 실제로 빠르게 이동한 경우만 '뛰기'로 판단 */
+    const running=(keys.has('ShiftLeft')||keys.has('ShiftRight'))&&len>0.1&&dt>0&&Math.hypot(player.x-fromX,player.z-fromZ)/dt>3.6;
+    runTime=running?runTime+dt:0;
     const sp=Math.hypot(player.vx,player.vz);
     player.bob+=sp*dt*2.1;
     camera.position.set(player.x,1.65+Math.sin(player.bob)*0.022*Math.min(1,sp/3),player.z);
+    if(doneCount()<BOOKS.length&&onGate())startGateWarning();
+    else if(runTime>0.15)startScold();
+  }else if(state==='gate'){
+    /* 자리에 앉아 있는 선생님 쪽으로 시선을 돌림 */
+    const dx=lib.x-player.x,dz=lib.z-player.z;
+    player.yaw=turnToward(player.yaw,Math.atan2(-dx,-dz),dt*5);
+    player.pitch+=(-0.1-player.pitch)*Math.min(1,dt*5);
+    camera.position.set(player.x,1.65,player.z);
+  }else if(state==='scold'){
+    /* 선생님 쪽으로 시선을 돌림 */
+    const dx=lib.x-player.x,dz=lib.z-player.z;
+    if(lib.mode!=='rise'&&clearLine(player,lib))player.yaw=turnToward(player.yaw,Math.atan2(-dx,-dz),dt*5);
+    player.pitch+=(-0.06-player.pitch)*Math.min(1,dt*5);
+    camera.position.set(player.x,1.65,player.z);
   }else if(state==='start'){
     player.yaw=Math.sin(t*0.18)*0.5;
     camera.position.set(player.x,1.65,player.z);
   }
+  updateLibrarian(dt);
   camera.rotation.set(player.pitch,player.yaw,0);
 
   /* 책 반짝임과 호버 */
@@ -1279,7 +1681,7 @@ function update(dt,t){
     tipEl.hidden=true;
     if(canvas.style.cursor==='pointer')canvas.style.cursor='grab';
   }
-  if(state==='play')drawMap();
+  if(state==='play'||state==='scold'||state==='gate')drawMap();
 }
 
 /* =====================================================
@@ -1395,6 +1797,7 @@ $('btnClose').addEventListener('click',function(){if(state==='quiz')closeBook();
 
 /* 끝 화면 */
 function showEnd(){
+  if(state==='scold'||state==='gate'){later(showEnd,500);return;}
   if(state!=='play')return;
   state='end';keys.clear();endJoy();
   if(document.pointerLockElement)document.exitPointerLock();
@@ -1417,6 +1820,7 @@ $('endPanel').addEventListener('click',function(e){
 function restartGame(){
   timers.forEach(clearTimeout);timers=[];
   resetNewButton();
+  resetLibrarian();
   $('end').hidden=true;
   for(const k in results)delete results[k];
   endShown=false;
