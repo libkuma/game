@@ -51,10 +51,14 @@ body.is-play .hud{display:block}
   position:fixed;z-index:10;
   left:max(16px,env(safe-area-inset-left,0px));
   top:calc(env(safe-area-inset-top,0px) + 12px);
-  width:262px;max-width:calc(100vw - 32px);
+  width:290px;max-width:calc(100vw - 32px);
 }
 .m-head{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 12px;cursor:pointer;font-weight:500}
-.m-head:focus-visible,.btn:focus-visible,.opt:focus-visible,.btn-float:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.m-top{display:flex;align-items:center;gap:6px;padding-right:8px}
+.m-top .m-head{flex:1;width:auto;min-width:0;gap:8px;white-space:nowrap}
+.m-new{flex:none;padding:5px 9px;border:1px solid var(--accent);border-radius:6px;background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.m-new:hover,.m-new.confirm{background:var(--accent);color:#04201c}
+.m-new:focus-visible,.m-head:focus-visible,.btn:focus-visible,.opt:focus-visible,.btn-float:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .m-head b{color:var(--gold);font-variant-numeric:tabular-nums}
 .chev{transition:transform .2s;color:var(--muted)}
 #mission.closed .chev{transform:rotate(-90deg)}
@@ -274,7 +278,10 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
   #map{width:116px}
   .panel{padding:22px 20px}
   .panel h1{font-size:30px}
-  #mission.closed{width:auto}
+  #mission.closed{width:max-content;max-width:calc(100vw - 170px)}
+  #mission.closed .m-top{flex-wrap:wrap;padding:0}
+  #mission.closed .m-top .m-head{flex:1 0 100%}
+  #mission.closed .m-new{margin:0 8px 8px;flex:1}
   .book{--bw:94vw;--bh:min(88vh,720px);transform:translateY(36px) scale(.8) rotateX(14deg)}
   .book.show{transform:scale(1)}
   .book.flip{transform:scale(1)}
@@ -286,6 +293,12 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
   .mini-info{display:block}
   .opt{font-size:16px}
 }
+/* 좁은 화면: 펼친 목록이 지도를 가리지 않도록 지도 아래에 표시 */
+@media (max-width:700px){
+  #mission:not(.closed){top:calc(env(safe-area-inset-top,0px) + 128px)}
+}
+/* 펼친 목록이 화면보다 길면 목록 안에서 스크롤 */
+#mList{max-height:calc(100vh - 250px);overflow-y:auto}
 @media (prefers-reduced-motion:reduce){
   .book,.cover,.inner{transition-duration:.01s!important;transition-delay:0s!important}
 }
@@ -300,9 +313,12 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 <div id="tip" aria-hidden="true" hidden>책 펼치기</div>
 
 <aside id="mission" class="glass hud">
-  <button id="btnList" class="m-head" type="button" aria-expanded="true" aria-controls="mList">
-    <span>찾아야 할 책 <b id="mCount">0 / 8</b></span><span class="chev">▾</span>
-  </button>
+  <div class="m-top">
+    <button id="btnList" class="m-head" type="button" aria-expanded="true" aria-controls="mList">
+      <span>찾아야 할 책 <b id="mCount">0 / 8</b></span><span class="chev">▾</span>
+    </button>
+    <button id="btnNew" class="m-new" type="button">새로 시작하기</button>
+  </div>
   <ul id="mList"></ul>
   <div class="m-foot">점수 <b id="mScore">0</b></div>
 </aside>
@@ -319,7 +335,7 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
   <div class="panel">
     <p class="kicker">공공도서관 3D 퀴즈</p>
     <h1>도서관 퀴즈 탐험</h1>
-    <p class="lead">서가 사이를 걸어 다니며 반짝이는 책을 찾아보세요. 책을 클릭하면 책이 펼쳐지고, 그 책과 관련된 퀴즈 5문항이 나옵니다. 첫 과제는 000 총류 서가의 『도서관 이용 안내』예요. 이 책을 마치면 나머지 7권이 열리고, 8권을 모두 읽으면 탐험이 끝나요. 나머지 책과 퀴즈는 창을 새로 열 때마다 바뀝니다.</p>
+    <p class="lead">서가 사이를 걸어 다니며 반짝이는 책을 찾아보세요. 책을 클릭하면 책이 펼쳐지고, 그 책과 관련된 퀴즈 5문항이 나옵니다. 첫 과제는 000 총류 서가의 『도서관 이용 안내』예요. 이 책을 마치면 나머지 7권이 열리고, 8권을 모두 읽으면 탐험이 끝나요. 나머지 책과 퀴즈는 창을 새로 열거나 ‘새로 시작하기’를 누를 때마다 바뀝니다.</p>
     <dl class="keys">
       <dt>이동</dt><dd><span class="d-only"><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> 또는 방향키 <kbd>↑</kbd> <kbd>↓</kbd></span><span class="t-only">왼쪽 아래를 끌기</span></dd>
       <dt>시점</dt><dd><span class="d-only">마우스 드래그 (또는 <kbd>←</kbd> <kbd>→</kbd>)</span><span class="t-only">화면을 끌기</span></dd>
@@ -668,7 +684,7 @@ function pickBooks(){
   try{localStorage.setItem(HISTORY_KEY,JSON.stringify(hist));}catch(err){}
   return [POOL.find(function(b){return b.id===FIRST_ID;})].concat(picked);
 }
-const BOOKS=pickBooks();
+let BOOKS=pickBooks();
 
 /* =====================================================
    3D 장면
@@ -818,7 +834,7 @@ function jit(c,a){return new T.Color(c).offsetHSL(0,0,(rnd()-.5)*a);}
 function bookColor(){
   return new T.Color(bookPalette[(rnd()*bookPalette.length)|0]).offsetHSL((rnd()-.5)*.03,(rnd()-.5)*.1,(rnd()-.5)*.1);
 }
-function addUnit(cx,cz,rotY,spec){
+function addUnit(cx,cz,rotY){
   etmp.set(0,rotY,0);qtmp.setFromEuler(etmp);
   const unitM=new T.Matrix4().compose(new T.Vector3(cx,0,cz),qtmp.clone(),new T.Vector3(1,1,1));
   const wood=0x735339;
@@ -830,13 +846,11 @@ function addUnit(cx,cz,rotY,spec){
     const y0=0.08+0.42*k+0.015;
     let x=-UW/2+0.06;
     const maxX=UW/2-0.06-(rnd()<0.18?rnd()*0.7:0);
-    const tg=(spec&&spec.level===k)?spec.t:null;
     while(x<maxX-0.03){
       if(rnd()<0.03){x+=0.08+rnd()*0.22;continue;}
       const w=0.028+rnd()*0.06,h=0.22+rnd()*0.14,dp=0.27+rnd()*0.08,bx=x+w/2;
-      if(tg!==null&&Math.abs(bx-tg)<0.1){x+=w+0.002;continue;}
       const tilt=rnd()<0.012;
-      bookParts.push({m:part(unitM,bx,y0+h/2,UD/2-dp/2-0.03,w,h,dp,tilt?0.18:0),c:bookColor()});
+      bookParts.push({m:part(unitM,bx,y0+h/2,UD/2-dp/2-0.03,w,h,dp,tilt?0.18:0),c:bookColor(),level:k,bx:bx});
       x+=w+(tilt?0.07:0.002);
     }
   }
@@ -889,21 +903,26 @@ const LEFT_XS=[-12.4,-10,-7.6,-5.2],RIGHT_XS=[5.2,7.6,10,12.4];
 const SEGS=Object.keys(ZONES).map(function(zone,n){
   return {k:zone.slice(0,3),row:ROW_Z[n<5?n:9-n],xs:n<5?LEFT_XS:RIGHT_XS,zone:zone};
 });
-/* 과제 도서는 자기 대분류 서가에만 배치. 위치는 창마다 달라짐(첫 과제는 000 서가 입구 쪽으로 고정) */
-const SPEC={};
-BOOKS.forEach(function(b){
-  const code=b.zone.slice(0,3);
-  if(b.id===FIRST_ID){SPEC[code+'-S-3']={b:b.id,level:2,t:0.3};return;}
-  const side=Math.random()<0.5?'S':'N',unit=Math.floor(Math.random()*4);
-  SPEC[code+'-'+side+'-'+unit]={b:b.id,level:1+Math.floor(Math.random()*3),t:Math.round((Math.random()*1.4-0.7)*10)/10};
-});
+/* 과제 도서는 자기 대분류 서가에만 배치. 위치는 목표를 새로 정할 때마다 달라짐(첫 과제는 000 서가 입구 쪽으로 고정) */
+function makeSpec(){
+  const spec={};
+  BOOKS.forEach(function(b){
+    const code=b.zone.slice(0,3);
+    if(b.id===FIRST_ID){spec[code+'-S-3']={b:b.id,level:2,t:0.3};return;}
+    const side=Math.random()<0.5?'S':'N',unit=Math.floor(Math.random()*4);
+    spec[code+'-'+side+'-'+unit]={b:b.id,level:1+Math.floor(Math.random()*3),t:Math.round((Math.random()*1.4-0.7)*10)/10};
+  });
+  return spec;
+}
+const unitSlots={};
 SEGS.forEach(function(sg){
   sg.xs.forEach(function(x,i){
-    const kS=sg.k+'-S-'+i,kN=sg.k+'-N-'+i;
-    const mS=addUnit(x,sg.row+UD/2,0,SPEC[kS]);
-    const mN=addUnit(x,sg.row-UD/2,Math.PI,SPEC[kN]);
-    if(SPEC[kS])placeTarget(SPEC[kS],mS,0);
-    if(SPEC[kN])placeTarget(SPEC[kN],mN,Math.PI);
+    [['S',sg.row+UD/2,0],['N',sg.row-UD/2,Math.PI]].forEach(function(f){
+      const key=sg.k+'-'+f[0]+'-'+i,from=bookParts.length;
+      const m=addUnit(x,f[1],f[2]);
+      for(let n=from;n<bookParts.length;n++)bookParts[n].key=key;
+      unitSlots[key]={m:m,rotY:f[2]};
+    });
   });
   const x0=sg.xs[0]-UW/2,x1=sg.xs[3]+UW/2;
   addCol(x0,x1,sg.row-0.5,sg.row+0.5,2.3,ZONES[sg.zone].map);
@@ -918,7 +937,27 @@ SEGS.forEach(function(sg){
   hangSign(sg.xs[0]<0?-4.03:4.03,3.1,sg.row,Math.PI/2,tex,2.2,0.62);
 });
 makeInstanced(frameParts);
-makeInstanced(bookParts);
+const shelfBooks=makeInstanced(bookParts);
+/* 과제 도서를 (다시) 배치: 이전 과제 도서를 치우고, 새 자리에 있던 일반 도서는 숨김 */
+const hiddenM=new T.Matrix4().makeScale(0,0,0);
+function placeAllTargets(){
+  for(const id in targets){
+    scene.remove(targets[id].group);
+    targets[id].mat.dispose();targets[id].glow.material.dispose();
+    delete targets[id];
+  }
+  hitMeshes.length=0;
+  const spec=makeSpec();
+  bookParts.forEach(function(p,n){
+    const sp=p.key&&spec[p.key];
+    const hide=!!sp&&sp.level===p.level&&Math.abs(p.bx-sp.t)<0.1;
+    shelfBooks.setMatrixAt(n,hide?hiddenM:p.m);
+  });
+  shelfBooks.instanceMatrix.needsUpdate=true;
+  for(const key in spec)placeTarget(spec[key],unitSlots[key].m,unitSlots[key].rotY);
+  return spec;
+}
+let SPEC=placeAllTargets();
 
 /* 열람석 */
 const rug1=new T.Mesh(new T.PlaneGeometry(30.6,11.6),new T.MeshLambertMaterial({color:0x1f3d44}));
@@ -1009,7 +1048,7 @@ $('btnList').addEventListener('click',function(){
   const m=$('mission');const closed=m.classList.toggle('closed');
   this.setAttribute('aria-expanded',closed?'false':'true');
 });
-if(window.innerWidth<700){$('mission').classList.add('closed');$('btnList').setAttribute('aria-expanded','false');}
+function openMission(){$('mission').classList.remove('closed');$('btnList').setAttribute('aria-expanded','true');}
 
 /* 지도 */
 const MAPS=6;
@@ -1365,22 +1404,46 @@ function showEnd(){
   $('endPanel').innerHTML='<p class="kicker">탐험 완료</p><h1>모든 책을 찾았어요</h1>'+
     '<div class="score"><b>'+(c*10)+'</b><span>점 · 정답 '+c+' / '+(BOOKS.length*5)+'</span></div><div class="rank">'+rank+'</div>'+
     '<ul>'+BOOKS.map(function(b){return '<li><span>'+b.title+'</span><span>'+results[b.id].best+' / 5</span></li>';}).join('')+'</ul>'+
-    '<div class="row-btns"><button class="btn primary" type="button" id="endKeep">계속 둘러보기</button><button class="btn ghost" type="button" id="endAgain">처음부터 다시</button></div>';
+    '<div class="row-btns"><button class="btn primary" type="button" id="endKeep">계속 둘러보기</button><button class="btn ghost" type="button" id="endAgain">새로 시작하기</button></div>';
   $('end').hidden=false;
   $('endKeep').focus();
 }
 $('endPanel').addEventListener('click',function(e){
   if(e.target.closest('#endKeep')){$('end').hidden=true;state='play';document.body.classList.add('is-play');}
-  if(e.target.closest('#endAgain')){
-    $('end').hidden=true;
-    for(const k in results)delete results[k];
-    endShown=false;
-    for(const id in targets)refreshTargetLook(id);
-    renderMission();
-    player.x=SPAWN.x;player.z=SPAWN.z;player.yaw=0;player.pitch=0;player.vx=player.vz=0;
-    state='play';document.body.classList.add('is-play');
-    toast('처음부터 다시 시작해요');
+  if(e.target.closest('#endAgain'))restartGame();
+});
+
+/* 새로 시작하기: 도서관 이용 안내는 그대로, 나머지 7권은 새로 선정 */
+function restartGame(){
+  timers.forEach(clearTimeout);timers=[];
+  resetNewButton();
+  $('end').hidden=true;
+  for(const k in results)delete results[k];
+  endShown=false;
+  BOOKS=pickBooks();
+  SPEC=placeAllTargets();
+  renderMission();
+  keys.clear();endJoy();ptrs.clear();hoverId=null;
+  player.x=SPAWN.x;player.z=SPAWN.z;player.yaw=0;player.pitch=0;player.vx=player.vz=0;
+  state='play';document.body.classList.add('is-play');
+  toast('새로운 도서 목표로 다시 시작해요. 먼저 『도서관 이용 안내』를 찾아보세요',4000);
+}
+/* 진행한 기록이 있으면 실수로 지워지지 않게 한 번 더 눌러 확인 */
+let confirmTimer=0;
+function resetNewButton(){
+  clearTimeout(confirmTimer);
+  const b=$('btnNew');b.classList.remove('confirm');b.textContent='새로 시작하기';
+}
+$('btnNew').addEventListener('click',function(){
+  if(state!=='play')return;
+  this.blur();
+  if(doneCount()>0&&!this.classList.contains('confirm')){
+    this.classList.add('confirm');this.textContent='한 번 더 누르기';
+    toast('지금까지의 점수가 지워져요. 새로 시작하려면 한 번 더 눌러 주세요',4000);
+    confirmTimer=setTimeout(resetNewButton,4000);
+    return;
   }
+  restartGame();
 });
 
 /* 시작 */
@@ -1390,6 +1453,7 @@ function startGame(){
   document.body.classList.add('is-play');
   player.pitch=0;
   renderMission();
+  openMission();
   const h=$('hint');h.classList.remove('fade');
   setTimeout(function(){h.classList.add('fade');},9000);
 }
