@@ -2006,6 +2006,7 @@ function behindLib(){
 function startHelp(){
   const behind=behindLib();
   state='help';
+  dialogPressed=false;
   keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
   /* 마우스 고정은 풀지 않음 (고정 풀기는 Q). 메뉴는 가상 커서로 선택 */
   centerVCursor();
@@ -2079,6 +2080,14 @@ $('helpMenu').addEventListener('click',function(e){
 });
 $('btnHelpBack').addEventListener('click',showHelpMenu);
 $('btnHelpClose').addEventListener('click',closeHelp);
+/* ---- 탭 겹침 방지 ----
+   휴대전화에서는 선생님을 탭한 손가락의 click이, 방금 그 자리에 뜬 메뉴 항목에 전달될 수 있음.
+   대화창이 열린 뒤 대화창을 새로 누른 경우에만 click을 받음 (키보드·가상 커서의 click은 detail이 0이라 그대로 동작) */
+let dialogPressed=false;
+$('scold').addEventListener('pointerdown',function(){dialogPressed=true;},true);
+$('scold').addEventListener('click',function(e){
+  if(state==='help'&&e.detail>0&&!dialogPressed){e.preventDefault();e.stopPropagation();}
+},true);
 function resetLibrarian(){
   lib.mode='sit';lib.x=SEAT.x;lib.z=SEAT.z;lib.yaw=SEAT.yaw;lib.sit=1;lib.path=[];runTime=0;
   $('scold').hidden=true;
