@@ -184,6 +184,9 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 .s-opt{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:1px solid var(--paper-line);border-radius:10px;background:#fafbf7;color:var(--ink);font:600 16px/1.4 var(--ui);text-align:left;cursor:pointer}
 .s-opt.vhover,.s-opt:hover{border-color:var(--brand);background:#eef6f3}
 .s-opt:focus-visible,.scold .btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+/* 가상 커서가 올라간 버튼 강조 */
+.opt.vhover:not(:disabled){border-color:var(--brand);background:#eef6f3}
+#quiz .btn.vhover,#end .btn.vhover,#quiz .btn-float.vhover{filter:brightness(1.15);outline:2px solid var(--accent);outline-offset:2px}
 #vcursor{display:none;position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none}
 .scold .btn.vhover{filter:brightness(1.15);outline:2px solid var(--brand);outline-offset:2px}
 .s-opt b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:13px}
@@ -567,7 +570,7 @@ body.touch .chev{padding:5px 10px}
       <dt>시점</dt><dd><span class="d-only"><kbd>A</kbd> <kbd>D</kbd> 또는 <kbd>←</kbd> <kbd>→</kbd> (마우스 드래그도 가능)</span><span class="t-only"><span class="t-port">화면을 끌기</span><span class="t-land">방향키 ◀ ▶ 또는 화면 끌기</span></span></dd>
       <dt class="d-only">달리기</dt><dd class="d-only"><kbd>Shift</kbd></dd>
       <dt>책 펼치기</dt><dd><span class="d-only">책을 클릭 또는 <kbd>E</kbd></span><span class="t-only">책을 탭</span></dd>
-      <dt class="d-only">고정 전환</dt><dd class="d-only"><kbd>Q</kbd> (한 번 누르면 마우스 시점 고정 해제, 다시 누르면 고정. Chrome·Edge에서는 전체 화면으로 바뀌고 Esc를 짧게 눌러도 고정이 유지돼요)</dd>
+      <dt class="d-only">고정 전환</dt><dd class="d-only"><kbd>Q</kbd> (한 번 누르면 마우스 시점 고정 해제, 다시 누르면 고정)</dd>
       <dt class="d-only">창 모드</dt><dd class="d-only"><kbd>Esc</kbd> 길게 누르기 (전체 화면을 해제하고 창 모드로 전환)</dd>
     </dl>
     <p class="rotate-tip">
@@ -1619,7 +1622,7 @@ function currentNdc(){
 
 window.addEventListener('keydown',function(e){
   /* Q: 누를 때마다 마우스 시점 고정 해제 ↔ 다시 고정 (e.code라서 한글 입력 상태에서도 동작)
-     다시 고정은 게임 중, 사서 선생님과 대화 중, 추격에 잡혔을 때만 */
+     다시 고정은 게임 중, 사서 선생님과 대화 중, 추격에 잡혔을 때, 책 퀴즈, 끝 화면에서만 */
   if(e.code==='KeyQ'){
     if(e.repeat)return;                       /* 길게 눌러도 한 번만 */
     if(document.pointerLockElement){e.preventDefault();document.exitPointerLock();return;}
@@ -1728,11 +1731,12 @@ canvas.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse')mo
 canvas.addEventListener('click',function(){
   if(!locked)return;
   if(state==='play')tryInteract({x:0,y:0});
-  else if(usesVCursor()){const b=vcursorTarget();if(b)b.click();}
+  else if(usesVCursor()){const b=vcursorTarget();if(b){b.click();refreshVCursor();}}
 });
 
-/* 가상 커서를 쓰는 상태: 사서 선생님과 대화 중이거나, 추격에 잡혔을 때 */
-function usesVCursor(){return state==='help'||state==='scold';}
+/* 가상 커서를 쓰는 상태와 그때 누를 수 있는 창: 사서 선생님 대화, 추격에 잡혔을 때, 책 퀴즈, 끝 화면 */
+const VC_BOX={help:'scold',scold:'scold',quiz:'quiz',end:'end'};
+function usesVCursor(){return VC_BOX.hasOwnProperty(state);}
 /* ---- 가상 커서: 마우스를 고정한 채 사서 선생님의 대화창 버튼을 누름 ---- */
 const vcur={x:0,y:0,over:null};
 const vcurEl=document.createElement('div');
@@ -1741,8 +1745,8 @@ vcurEl.innerHTML='<svg width="22" height="28" viewBox="0 0 22 28"><path d="M2 2v
 document.body.appendChild(vcurEl);
 function vcursorTarget(){
   const el=document.elementFromPoint(vcur.x,vcur.y);
-  const b=el&&el.closest('button');
-  return b&&$('scold').contains(b)?b:null;
+  const b=el&&el.closest('button,a');
+  return b&&usesVCursor()&&$(VC_BOX[state]).contains(b)?b:null;
 }
 function drawVCursor(){
   const show=locked&&usesVCursor();
@@ -1758,9 +1762,10 @@ function centerVCursor(){vcur.x=window.innerWidth/2;vcur.y=window.innerHeight/2;
 function refreshVCursor(){requestAnimationFrame(drawVCursor);}
 /* 고정 중에는 휠 입력이 대화창에 닿지 않으므로 직접 스크롤 */
 document.addEventListener('wheel',function(e){
-  if(!locked||state!=='help')return;
+  if(!locked||!usesVCursor())return;
   const unit=e.deltaMode===1?16:1;
-  [$('helpBody'),$('scold')].some(function(el){
+  const areas=state==='quiz'?[document.querySelector('#quiz .scroll')]:state==='end'?[$('endPanel')]:[$('helpBody'),$('scold')];
+  areas.some(function(el){
     const before=el.scrollTop;el.scrollTop+=e.deltaY*unit;
     return el.scrollTop!==before;
   });
@@ -2479,7 +2484,8 @@ function playPageSound(delay){
 }
 function openBook(id){
   const b=BOOKS.find(function(x){return x.id===id;});if(!b||isLocked(id))return;
-  if(document.pointerLockElement)document.exitPointerLock();
+  /* 마우스 고정은 풀지 않음 (고정 전환은 Q). 버튼은 가상 커서로 누름 */
+  centerVCursor();
   keys.clear();endJoy();resetPad();ptrs.clear();
   state='quiz';tipEl.hidden=true;
   document.body.classList.remove('is-play');
@@ -2492,6 +2498,7 @@ function openBook(id){
   const book=$('book');
   book.className='book';
   $('quiz').hidden=false;
+  refreshVCursor();
   renderQ();
   void book.offsetWidth;
   book.classList.add('show');
@@ -2572,6 +2579,7 @@ $('pageInner').addEventListener('click',function(e){
 });
 function closeBook(){
   timers.forEach(clearTimeout);timers=[];
+  refreshVCursor();
   $('quiz').hidden=true;$('book').className='book';
   const wasDone=cur&&cur.finished?cur:null;
   cur=null;state='play';document.body.classList.add('is-play');
@@ -2586,7 +2594,8 @@ function showEnd(){
   if(state==='scold'||state==='gate'||state==='help'){later(showEnd,500);return;}
   if(state!=='play')return;
   state='end';keys.clear();endJoy();resetPad();
-  if(document.pointerLockElement)document.exitPointerLock();
+  /* 마우스 고정은 풀지 않음 (고정 전환은 Q). 버튼은 가상 커서로 누름 */
+  centerVCursor();
   document.body.classList.remove('is-play');
   const c=totalCorrect();
   const rank=c>=36?'책 속의 현자':c>=28?'열혈 독서가':c>=20?'성실한 이용자':'도서관 새내기';
@@ -2596,11 +2605,14 @@ function showEnd(){
     '<p><a class="btn primary big survey-link" href="'+SURVEY_URL+'" target="_blank" rel="noopener noreferrer">3. 설문조사 참여하기</a></p>'+
     '<div class="row-btns"><button class="btn primary" type="button" id="endKeep">계속 둘러보기</button><button class="btn ghost" type="button" id="endAgain">새로 시작하기</button></div>';
   $('end').hidden=false;
+  refreshVCursor();
   $('endKeep').focus();
 }
 $('endPanel').addEventListener('click',function(e){
   if(e.target.closest('#endKeep')){$('end').hidden=true;state='play';document.body.classList.add('is-play');}
   if(e.target.closest('#endAgain'))restartGame();
+  if(e.target.closest('.survey-link')&&document.pointerLockElement)document.exitPointerLock();   /* 설문 창에서는 마우스를 자유롭게 */
+  refreshVCursor();
 });
 
 /* 새로 시작하기: 도서관 이용 안내는 그대로, 나머지 7권은 새로 선정 */
