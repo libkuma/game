@@ -1899,7 +1899,7 @@ function pathLength(path){
   path.forEach(function(p){len+=Math.hypot(p.x-a.x,p.z-a.z);a=p;});
   return len;
 }
-const CHASE_BOOST=1.7;   /* 추격 속도 배율: 기존보다 0.7배(70%) 더 빠름 */
+const CHASE_BOOST=1.4;   /* 추격 속도 배율: 기존보다 0.4배(40%) 더 빠름 */
 function planCome(){
   const staff=inStaffArea();
   lib.path=(staff?[STAFF_EXIT]:[]).concat(findPath(staff?STAFF_EXIT:lib,player));
