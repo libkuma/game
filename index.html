@@ -155,6 +155,7 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 .btn.primary{background:var(--accent);color:#04201c;border-color:var(--accent)}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.big{font-size:16px;padding:13px 28px}
+.survey-link{display:inline-block;text-decoration:none}
 .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
 .btn.ghost:hover{border-color:var(--accent)}
 .row-btns{display:flex;flex-wrap:wrap;gap:10px}
@@ -567,6 +568,7 @@ body.touch .chev{padding:5px 10px}
       <dt class="d-only">달리기</dt><dd class="d-only"><kbd>Shift</kbd></dd>
       <dt>책 펼치기</dt><dd><span class="d-only">책을 클릭 또는 <kbd>E</kbd></span><span class="t-only">책을 탭</span></dd>
       <dt class="d-only">고정 풀기</dt><dd class="d-only"><kbd>Q</kbd> (마우스 시점 고정 풀기. Chrome·Edge에서는 전체 화면으로 바뀌고 Esc를 짧게 눌러도 고정이 유지돼요)</dd>
+      <dt class="d-only">창 모드</dt><dd class="d-only"><kbd>Esc</kbd> 길게 누르기 (전체 화면을 해제하고 창 모드로 전환)</dd>
     </dl>
     <p class="rotate-tip">
       <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="19" width="26" height="15" rx="3"/><path d="M14 6c10-2 19 4 20 14"/><path d="M29.5 16.5l4.5 4.5 3.5-5.5"/></svg>
@@ -1931,15 +1933,17 @@ $('btnYes').addEventListener('click',function(){
 /* ---- 사서 선생님께 말 걸기 ----
    앞·옆에서: 선생님이 플레이어를 바라보며 "무엇을 도와드릴까요?" + 선택 메뉴 (항목은 HELP_MENU에 더하면 번호가 자동으로 붙음)
    뒤에서   : 선생님은 돌아보지 않고 "누구시죠?" 라고만 대답 */
-const HELP_MENU=[{label:'게임 방법',show:showHowto},{label:'도서관 이용 안내',show:showGuide}];
+const HELP_MENU=[{label:'게임 방법',show:showHowto},{label:'도서관 이용 안내',show:showGuide},{label:'설문조사',show:showSurvey}];
+const SURVEY_URL='https://docs.google.com/forms/d/e/1FAIpQLScC6z1RZfut0niWvjAwgqeEXfkekx6oK11yP9iFG5eeyYRk_Q/viewform';
 const GUIDE_TOPICS=['한국십진분류법(KDC)','분류 번호','청구기호','ISBN','도서관 예절'];   /* 『도서관 이용 안내』 퀴즈 5문항의 주제 */
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function scoldView(v){   /* plain: 경고창 / menu: 선택 메뉴 / howto·guide: 안내 / behind: 뒤에서 말 걸었을 때 */
   refreshVCursor();
   $('btnYes').hidden=v!=='plain';
   $('helpMenu').hidden=v!=='menu';
-  $('helpBody').hidden=!(v==='howto'||v==='guide');
-  $('btnHelpBack').hidden=!(v==='howto'||v==='guide');
+  const detail=v==='howto'||v==='guide'||v==='survey';
+  $('helpBody').hidden=!detail;
+  $('btnHelpBack').hidden=!detail;
   $('btnHelpClose').hidden=v==='plain';
   $('scold').classList.toggle('wide',v==='howto'||v==='guide');
 }
@@ -1996,6 +2000,20 @@ function showGuide(){
   $('btnHelpBack').focus({preventScroll:true});
   $('scold').scrollTop=0;
 }
+/* 3. 설문조사: 버튼을 누르면 설문 링크를 새 창으로 엶 (가상 커서로도 누를 수 있게 button 사용) */
+function showSurvey(){
+  $('helpBody').innerHTML='<p class="lead">도서관 퀴즈 탐험은 어땠나요? 아래 버튼을 눌러 설문에 참여해 주세요. 설문은 새 창에서 열려요.</p>'+
+    '<button type="button" class="btn big" id="btnSurvey">설문 참여하기</button>';
+  say('설문조사');
+  scoldView('survey');
+  $('btnSurvey').focus({preventScroll:true});
+  $('scold').scrollTop=0;
+}
+$('helpBody').addEventListener('click',function(e){
+  if(!e.target.closest('#btnSurvey'))return;
+  window.open(SURVEY_URL,'_blank','noopener');
+  if(document.pointerLockElement)document.exitPointerLock();   /* 설문 창에서는 마우스를 자유롭게 */
+});
 function closeHelp(){
   if(state!=='help')return;
   $('scold').hidden=true;scoldView('plain');
@@ -2534,6 +2552,7 @@ function showEnd(){
   $('endPanel').innerHTML='<p class="kicker">탐험 완료</p><h1>모든 책을 찾았어요</h1>'+
     '<div class="score"><b>'+(c*10)+'</b><span>점 · 정답 '+c+' / '+(BOOKS.length*5)+'</span></div><div class="rank">'+rank+'</div>'+
     '<ul>'+BOOKS.map(function(b){return '<li><span>'+b.title+'</span><span>'+results[b.id].best+' / 5</span></li>';}).join('')+'</ul>'+
+    '<p><a class="btn primary big survey-link" href="'+SURVEY_URL+'" target="_blank" rel="noopener noreferrer">3. 설문조사 참여하기</a></p>'+
     '<div class="row-btns"><button class="btn primary" type="button" id="endKeep">계속 둘러보기</button><button class="btn ghost" type="button" id="endAgain">새로 시작하기</button></div>';
   $('end').hidden=false;
   $('endKeep').focus();
