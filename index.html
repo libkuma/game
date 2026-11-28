@@ -176,6 +176,28 @@ kbd{font:600 11.5px var(--ui);padding:1px 6px;border:1px solid var(--line);borde
 .scold .s-name{margin:0 0 4px;font-size:13px;font-weight:700;color:#a8521f}
 .scold .s-text{margin:0 0 14px;font:700 21px/1.5 var(--book);text-wrap:balance}
 .scold .btn{min-width:120px;background:var(--brand);border-color:var(--brand);color:#fff}
+.scold .btn.ghost{background:transparent;color:var(--ink);border-color:var(--paper-line)}
+.scold .btn.ghost:hover{border-color:var(--brand)}
+/* 사서 선생님께 말을 걸었을 때: 선택 메뉴, 게임 방법, 도서관 이용 안내 */
+.s-menu{display:flex;flex-direction:column;gap:8px;margin:0 0 12px}
+.s-opt{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:1px solid var(--paper-line);border-radius:10px;background:#fafbf7;color:var(--ink);font:600 16px/1.4 var(--ui);text-align:left;cursor:pointer}
+.s-opt:hover{border-color:var(--brand);background:#eef6f3}
+.s-opt:focus-visible,.scold .btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.s-opt b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:13px}
+.s-row{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.scold.wide{width:min(600px,calc(100vw - 32px));max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);overflow:auto;text-align:left}
+.scold.wide .s-text{text-align:center;margin-bottom:10px}
+.scold.wide .s-row{position:sticky;bottom:-20px;margin:0 -22px -20px;padding:10px 22px 14px;background:var(--paper);border-top:1px solid var(--paper-line)}
+.s-body{margin:0 0 12px}
+.s-body ul{margin:0 0 12px;padding-left:1.1em;font:400 15px/1.7 var(--book)}
+.s-body li+li{margin-top:7px}
+.s-body li b{font-family:var(--ui);color:#a8521f}
+.s-body .g-h{margin:0 0 6px;font:700 14px var(--ui);color:var(--brand)}
+.s-body .lead{margin:0 0 12px;color:var(--ink);font:400 15px/1.75 var(--book)}
+.s-body .keys{margin:0 0 12px;color:var(--ink);border-color:var(--paper-line);background:#fafbf7}
+.s-body .keys dt{color:var(--ink-soft)}
+.s-body kbd{border-color:var(--paper-line);background:#fff;color:var(--ink)}
+.s-body .rotate-tip{margin:0 0 6px;color:#6b4a0c;background:rgba(240,185,74,.2);border-color:rgba(168,120,20,.55)}
 
 /* ---------- 펼쳐지는 책 ---------- */
 #quiz{padding:0;background:rgba(5,12,16,.72)}
@@ -507,9 +529,9 @@ body.touch .chev{padding:5px 10px}
 </div>
 <div id="mapbox" class="glass hud"><canvas id="map" width="216" height="168" aria-label="도서관 지도"></canvas></div>
 <div id="hint" class="hud">
-  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E</span>
-  <span class="h-land">방향키로 이동·방향 전환 · 뛰기는 ▲와 함께 · 책을 탭</span>
-  <span class="h-touch">왼쪽 아래를 끌어 이동 · 화면을 끌어 둘러보기 · 책을 탭</span>
+  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E · 사서 선생님 클릭</span>
+  <span class="h-land">방향키로 이동·방향 전환 · 뛰기는 ▲와 함께 · 책·사서 선생님을 탭</span>
+  <span class="h-touch">왼쪽 아래를 끌어 이동 · 화면을 끌어 둘러보기 · 책·사서 선생님을 탭</span>
 </div>
 <div id="joy" aria-hidden="true"><div class="knob"></div></div>
 <div id="pad" class="ctl" role="group" aria-label="방향키: 위아래는 이동, 좌우는 방향 전환">
@@ -523,7 +545,13 @@ body.touch .chev{padding:5px 10px}
 <div id="scold" class="scold" hidden role="alertdialog" aria-labelledby="scoldName" aria-describedby="scoldText">
   <p class="s-name" id="scoldName">사서 선생님</p>
   <p class="s-text" id="scoldText">친구!, 도서관에서 뛰면 안돼요!</p>
+  <div id="helpBody" class="s-body" hidden></div>
+  <div id="helpMenu" class="s-menu" hidden></div>
   <button id="btnYes" class="btn primary big" type="button">네</button>
+  <div class="s-row">
+    <button id="btnHelpBack" class="btn ghost" type="button" hidden>뒤로</button>
+    <button id="btnHelpClose" class="btn ghost" type="button" hidden>닫기</button>
+  </div>
 </div>
 
 <div id="start" class="overlay">
@@ -1524,8 +1552,27 @@ function pick(ndc){
   if(occluded(o.x,o.y,o.z,d.x,d.y,d.z,Math.max(0,h.distance-0.02)))return null;
   return {id:h.object.userData.bookId,dist:h.distance};
 }
+/* 사서 선생님 클릭 판정: 상체를 감싸는 보이지 않는 상자 (책상에 가려진 아래쪽은 제외) */
+const libProxy=new T.Mesh(unitBox,new T.MeshBasicMaterial({visible:false}));
+libProxy.scale.set(0.7,0.8,0.6);libProxy.position.set(0,1.55,0);rig.upper.add(libProxy);
+function pickLibrarian(ndc){
+  raycaster.setFromCamera(ndc,camera);raycaster.far=14;
+  const hits=raycaster.intersectObject(libProxy,false);
+  if(!hits.length)return null;
+  const h=hits[0],o=raycaster.ray.origin,d=raycaster.ray.direction;
+  if(occluded(o.x,o.y,o.z,d.x,d.y,d.z,Math.max(0,h.distance-0.02)))return null;
+  return {dist:h.distance};
+}
+function canTalkLib(){return lib.mode==='sit'||lib.mode==='settle';}
 function tryInteract(ndc){
-  const hit=pick(ndc||currentNdc());
+  ndc=ndc||currentNdc();
+  const book=pick(ndc),lh=pickLibrarian(ndc);
+  if(lh&&(!book||lh.dist<book.dist)){
+    if(lh.dist>RANGE){toast('조금 더 가까이 다가가 보세요');return;}
+    if(!canTalkLib()){toast('사서 선생님이 지금은 바빠요');return;}
+    startHelp();return;
+  }
+  const hit=book;
   if(!hit)return;
   if(isLocked(hit.id)){toast(LOCK_MSG,3000);return;}
   if(hit.dist>RANGE){toast('조금 더 가까이 다가가 보세요');return;}
@@ -1542,6 +1589,11 @@ window.addEventListener('keydown',function(e){
   if(state==='quiz'){
     if(e.key==='Escape'){closeBook();return;}
     if(/^[1-4]$/.test(e.key)&&cur&&!cur.finished){const b=document.querySelector('.opt[data-i="'+(Number(e.key)-1)+'"]');if(b&&!b.disabled)b.click();}
+    return;
+  }
+  if(state==='help'){
+    if(e.key==='Escape'){if(!$('helpBody').hidden)showHelpMenu();else closeHelp();}
+    else if(/^[1-9]$/.test(e.key)&&!$('helpMenu').hidden){const m=HELP_MENU[Number(e.key)-1];if(m)m.show();}
     return;
   }
   if(state!=='play')return;
@@ -1644,9 +1696,13 @@ document.addEventListener('mousemove',function(e){
   if(!locked||state!=='play')return;
   player.yaw-=e.movementX*0.0024;player.pitch=Math.max(-1.2,Math.min(1.2,player.pitch-e.movementY*0.0024));
 });
-$('btnLock').addEventListener('click',function(){
-  const fail=function(){toast('이 화면에서는 마우스 고정을 쓸 수 없어요. 드래그로 둘러보세요.');};
+/* 마우스 시점 고정 요청. quiet면 실패해도 안내 문구를 띄우지 않음 */
+function lockMouse(quiet){
+  const fail=function(){if(!quiet)toast('이 화면에서는 마우스 고정을 쓸 수 없어요. 드래그로 둘러보세요.');};
   try{const p=canvas.requestPointerLock();if(p&&p.catch)p.catch(fail);}catch(err){fail();}
+}
+$('btnLock').addEventListener('click',function(){
+  lockMouse(false);
 });
 
 /* =====================================================
@@ -1777,12 +1833,13 @@ function startGateWarning(){
   if(document.pointerLockElement)document.exitPointerLock();
   tipEl.hidden=true;canvas.style.cursor='default';
   $('toast').classList.remove('show');
-  say(GATE_MSG);$('scold').hidden=false;
+  say(GATE_MSG);scoldView('plain');$('scold').hidden=false;
   $('btnYes').focus({preventScroll:true});
 }
 function talk(){
   lib.mode='talk';lib.path=[];
   $('toast').classList.remove('show');
+  scoldView('plain');
   $('scold').hidden=false;
   $('btnYes').focus({preventScroll:true});
 }
@@ -1801,6 +1858,85 @@ $('btnYes').addEventListener('click',function(){
   planBack();lib.mode='back';
   state='play';keys.clear();canvas.style.cursor='grab';
 });
+/* ---- 사서 선생님께 말 걸기 ----
+   앞·옆에서: 선생님이 플레이어를 바라보며 "무엇을 도와드릴까요?" + 선택 메뉴 (항목은 HELP_MENU에 더하면 번호가 자동으로 붙음)
+   뒤에서   : 선생님은 돌아보지 않고 "누구시죠?" 라고만 대답 */
+const HELP_MENU=[{label:'게임 방법',show:showHowto},{label:'도서관 이용 안내',show:showGuide}];
+const GUIDE_TOPICS=['한국십진분류법(KDC)','분류 번호','청구기호','ISBN','도서관 예절'];   /* 『도서관 이용 안내』 퀴즈 5문항의 주제 */
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function scoldView(v){   /* plain: 경고창 / menu: 선택 메뉴 / howto·guide: 안내 / behind: 뒤에서 말 걸었을 때 */
+  $('btnYes').hidden=v!=='plain';
+  $('helpMenu').hidden=v!=='menu';
+  $('helpBody').hidden=!(v==='howto'||v==='guide');
+  $('btnHelpBack').hidden=!(v==='howto'||v==='guide');
+  $('btnHelpClose').hidden=v==='plain';
+  $('scold').classList.toggle('wide',v==='howto'||v==='guide');
+}
+/* 선생님 기준으로 플레이어가 등 뒤(약 100° 바깥)에 있는지 */
+function behindLib(){
+  const dx=player.x-lib.x,dz=player.z-lib.z,d=Math.hypot(dx,dz)||1;
+  return (Math.sin(lib.yaw)*dx+Math.cos(lib.yaw)*dz)/d<-0.17;
+}
+function startHelp(){
+  const behind=behindLib();
+  state='help';
+  keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
+  if(document.pointerLockElement)document.exitPointerLock();
+  tipEl.hidden=true;canvas.style.cursor='default';
+  $('toast').classList.remove('show');
+  $('scold').hidden=false;
+  if(behind){                              /* 돌아보지 않고 그대로 앉아서 대답 */
+    say('누구시죠?');scoldView('behind');
+    $('btnHelpClose').focus({preventScroll:true});
+    return;
+  }
+  lib.mode='talk';lib.path=[];            /* 자리에 앉은 채 플레이어를 바라봄 */
+  $('helpMenu').innerHTML=HELP_MENU.map(function(m,i){return '<button type="button" class="s-opt" data-i="'+i+'"><b>'+(i+1)+'</b><span>'+m.label+'</span></button>';}).join('');
+  showHelpMenu();
+}
+function showHelpMenu(){
+  say('무엇을 도와드릴까요?');
+  scoldView('menu');
+  const b=$('helpMenu').firstElementChild;if(b)b.focus({preventScroll:true});
+}
+/* 1. 게임 방법: 시작 화면의 설명(소개 글, 조작 표, 안내)을 그대로 보여 줌 */
+function showHowto(){
+  const body=$('helpBody');body.innerHTML='';
+  ['.lead','.keys','.rotate-tip'].forEach(function(sel){
+    const n=document.querySelector('#start '+sel);if(n)body.appendChild(n.cloneNode(true));
+  });
+  say('게임 방법');
+  scoldView('howto');
+  $('btnHelpBack').focus({preventScroll:true});
+  $('scold').scrollTop=0;
+}
+/* 2. 도서관 이용 안내: 『도서관 이용 안내』 퀴즈의 내용을 간단히 정리하고, 이번 판에 나오는 책을 소개 */
+function showGuide(){
+  const lb=POOL.find(function(b){return b.id===FIRST_ID;});
+  let h='<p class="g-h">도서관 이용 기본 (첫 과제 퀴즈 내용)</p><ul>';
+  lb.qs.forEach(function(q,i){h+='<li><b>'+esc(GUIDE_TOPICS[i]||'')+'</b> '+esc(q.e)+'</li>';});
+  h+='</ul><p class="g-h">이번 판에 만나는 책</p><ul>';
+  BOOKS.forEach(function(b){h+='<li><b>『'+esc(b.title)+'』</b> '+esc(b.zone)+' · '+esc(b.desc)+'</li>';});
+  h+='</ul>';
+  $('helpBody').innerHTML=h;
+  say('도서관 이용 안내');
+  scoldView('guide');
+  $('btnHelpBack').focus({preventScroll:true});
+  $('scold').scrollTop=0;
+}
+function closeHelp(){
+  if(state!=='help')return;
+  $('scold').hidden=true;scoldView('plain');
+  if(lib.mode==='talk')lib.mode='settle'; /* 의자 방향으로 돌아앉음 */
+  state='play';keys.clear();canvas.style.cursor='grab';
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+}
+$('helpMenu').addEventListener('click',function(e){
+  const b=e.target.closest('.s-opt');if(!b)return;
+  const m=HELP_MENU[Number(b.dataset.i)];if(m)m.show();
+});
+$('btnHelpBack').addEventListener('click',showHelpMenu);
+$('btnHelpClose').addEventListener('click',closeHelp);
 function resetLibrarian(){
   lib.mode='sit';lib.x=SEAT.x;lib.z=SEAT.z;lib.yaw=SEAT.yaw;lib.sit=1;lib.path=[];runTime=0;
   $('scold').hidden=true;
@@ -1842,6 +1978,9 @@ function updateLibrarian(dt){
     follow(dt);
     swing=Math.sin(lib.phase)*0.6;
     if(!lib.path.length){swing=0;lib.mode='sitdown';}
+  }else if(lib.mode==='settle'){
+    lib.yaw=turnToward(lib.yaw,SEAT.yaw,dt*6);
+    if(Math.abs(Math.atan2(Math.sin(SEAT.yaw-lib.yaw),Math.cos(SEAT.yaw-lib.yaw)))<0.02){lib.yaw=SEAT.yaw;lib.mode='sit';}
   }else if(lib.mode==='sitdown'){
     lib.yaw=turnToward(lib.yaw,SEAT.yaw,dt*8);
     lib.sit=Math.min(1,lib.sit+dt*2.2);
@@ -2110,8 +2249,8 @@ function update(dt,t){
     player.bob+=sp*dt*2.1;
     camera.position.set(player.x,1.65+Math.sin(player.bob)*0.022*Math.min(1,sp/3),player.z);
     if(doneCount()<BOOKS.length&&onGate())startGateWarning();
-    else if(runTime>=runLimit&&(lib.mode==='sit'||lib.mode==='back'||lib.mode==='sitdown'))startChase();
-  }else if(state==='gate'){
+    else if(runTime>=runLimit&&(lib.mode==='sit'||lib.mode==='back'||lib.mode==='sitdown'||lib.mode==='settle'))startChase();
+  }else if(state==='gate'||state==='help'){
     /* 자리에 앉아 있는 선생님 쪽으로 시선을 돌림 */
     const dx=lib.x-player.x,dz=lib.z-player.z;
     player.yaw=turnToward(player.yaw,Math.atan2(-dx,-dz),dt*5);
@@ -2159,7 +2298,19 @@ function update(dt,t){
     if(openable)canvas.style.cursor='pointer';
     else if(canvas.style.cursor==='pointer')canvas.style.cursor='grab';
   }
-  if(state==='play'||state==='scold'||state==='gate')drawMap();
+  /* 사서 선생님 위에 있을 때 (책보다 우선하지 않음) */
+  if(state==='play'&&!hit){
+    const lh=pickLibrarian(currentNdc());
+    if(lh){
+      if(lh.dist<=RANGE)canvas.style.cursor='pointer';
+      else{
+        tipEl.hidden=false;tipEl.className='far';tipEl.textContent='조금 더 가까이';
+        const p=locked||!mouse.has||document.body.classList.contains('touch')?{x:window.innerWidth/2,y:window.innerHeight/2}:mouse;
+        tipEl.style.transform='translate('+Math.round(p.x+16)+'px,'+Math.round(p.y+18)+'px)';
+      }
+    }
+  }
+  if(state==='play'||state==='scold'||state==='gate'||state==='help')drawMap();
 }
 
 /* =====================================================
@@ -2275,7 +2426,7 @@ $('btnClose').addEventListener('click',function(){if(state==='quiz')closeBook();
 
 /* 끝 화면 */
 function showEnd(){
-  if(state==='scold'||state==='gate'){later(showEnd,500);return;}
+  if(state==='scold'||state==='gate'||state==='help'){later(showEnd,500);return;}
   if(state!=='play')return;
   state='end';keys.clear();endJoy();resetPad();
   if(document.pointerLockElement)document.exitPointerLock();
@@ -2335,6 +2486,7 @@ function startGame(){
   $('start').hidden=true;state='play';
   document.body.classList.add('is-play');
   player.pitch=0;
+  if(!document.body.classList.contains('touch'))lockMouse(true);   /* 마우스 기기는 처음부터 시점 고정 (Esc로 해제) */
   renderMission();
   openMission();
   const h=$('hint');h.classList.remove('fade');
