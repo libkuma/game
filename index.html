@@ -1409,7 +1409,7 @@ function plant(x,z){
 ===================================================== */
 let state='start';
 let runTime=0;
-let runLimit=1+Math.random();   /* 뛰기 시작한 뒤 사서 선생님이 움직일 때까지의 시간(초), 1~2초 사이 무작위 */
+let runLimit=0.3+Math.random()*0.7;   /* 뛰기 시작한 뒤 사서 선생님이 움직일 때까지의 시간(초), 0.3~1초 사이 무작위 */
 const results={};
 let endShown=false;
 const player={x:SPAWN.x,z:SPAWN.z,yaw:0,pitch:0,vx:0,vz:0,bob:0};
@@ -1740,7 +1740,7 @@ function planBack(){
   lib.path=(staff?[]:findPath(lib,STAFF_EXIT).concat([STAFF_EXIT])).concat([{x:SEAT.x,z:SEAT.z}]);
   lib.speed=Math.max(2.4,pathLength(lib.path)/7);
 }
-/* 뛰기 시작한 지 1~2초(판단 때마다 무작위) 뒤에 사서 선생님이 일어나 플레이어를 쫓아옴 */
+/* 뛰기 시작한 지 0.3~1초(뛸 때마다 무작위) 뒤에 사서 선생님이 일어나 플레이어를 쫓아옴 */
 function startChase(){
   lib.mode='rise';runTime=0;
   toast('사서 선생님이 쫓아오고 있어요!',2500);
@@ -1840,12 +1840,12 @@ function updateLibrarian(dt){
 }
 
 /* =====================================================
-   열람객 7명 (판마다 무작위로 새로 생성)
+   열람객 18명 (판마다 무작위로 새로 생성)
    sit    : 열람석 의자에 앉아 책을 읽음
-   wander : 서가에서 책을 꺼내 30초쯤 읽고, 책을 꽂은 뒤 다른 서가로 이동
+   wander : 서가에서 책을 꺼내 15초쯤 읽고, 책을 꽂은 뒤 다른 서가로 이동
    aisle  : 서가 사이에 서서(또는 바닥에 앉아) 계속 책을 읽음
 ===================================================== */
-const VISITOR_COUNT=7;
+const VISITOR_COUNT=18;
 const SKINS=[0xf1c7a5,0xe8b58f,0xd9a07a,0xc58c66,0x8d5a3c];
 const HAIRS=[0x2a1f1a,0x3a2a22,0x5a3b28,0x1b1b1f,0x8a6a45,0xa8a8a8,0x6b3a22];
 const TOPS=[0x3f6fb5,0xb5533f,0x6a9a4a,0xd2a63a,0x7a5aa5,0x3a8f8a,0xc9608a,0x55606b,0xe8e2d2,0x8a4b3a];
@@ -1853,6 +1853,8 @@ const PANTS=[0x2f3a4a,0x4a3f35,0x3a4a3a,0x55535a,0x24282e,0x5a4a6a];
 const SHOES=[0x22262a,0x5a3a2a,0xe8e8e8];
 const HY=0.86;                                   /* 엉덩이 높이: 상체는 이 높이를 축으로 숙임 */
 const PBALL=new T.SphereGeometry(1,20,14);
+const BOOK_TILT=0.54;     /* 책 속지 면의 법선이 눈을 향하는 각도(라디안) */
+const READ_HEAD=0.52;     /* 책을 볼 때 고개를 숙이는 각도(라디안) */
 const SEATS=[];
 TABLES.forEach(function(p){
   [-0.8,0.8].forEach(function(dx){
@@ -1882,24 +1884,29 @@ function makePerson(o){
   });
   box(upper,0.44,0.6,0.24,o.top,0,1.15-HY,0);
   box(upper,0.09,0.09,0.09,o.skin,0,1.49-HY,0);
-  orb(upper,o.skin,0.15,0.165,0.145,0,1.66-HY,0);
-  [-1,1].forEach(function(s){orb(upper,0x241a16,0.016,0.02,0.01,s*0.055,1.67-HY,0.14);});
+  /* 머리: 목 위에서 따로 숙일 수 있게 묶음 (원점이 머리 중심) */
+  const HEADY=1.66-HY;
+  const head=new T.Group();head.position.set(0,HEADY,0);upper.add(head);
+  orb(head,o.skin,0.15,0.165,0.145,0,0,0);
+  [-1,1].forEach(function(s){orb(head,0x241a16,0.016,0.02,0.01,s*0.055,0.01,0.14);});
   if(o.style===3){
-    orb(upper,o.hair,0.158,0.095,0.152,0,1.77-HY,-0.01);
+    orb(head,o.hair,0.158,0.095,0.152,0,1.77-HY-HEADY,-0.01);
   }else{
-    orb(upper,o.hair,0.168,0.13,0.163,0,1.755-HY,-0.02);
-    orb(upper,o.hair,0.16,0.17,0.09,0,1.66-HY,-0.085);
-    if(o.style===1)box(upper,0.3,0.4,0.07,o.hair,0,1.5-HY,-0.13);
-    if(o.style===2)orb(upper,o.hair,0.075,0.075,0.075,0,1.76-HY,-0.18);
+    orb(head,o.hair,0.168,0.13,0.163,0,1.755-HY-HEADY,-0.02);
+    orb(head,o.hair,0.16,0.17,0.09,0,0,-0.085);
+    if(o.style===1)box(head,0.3,0.4,0.07,o.hair,0,1.5-HY-HEADY,-0.13);
+    if(o.style===2)orb(head,o.hair,0.075,0.075,0.075,0,1.76-HY-HEADY,-0.18);
   }
-  /* 손에 든 책: 표지는 바깥쪽, 속지는 읽는 사람 쪽 */
-  const book=new T.Group();book.position.set(0,1.2-HY,0.44);book.rotation.x=-0.32;
-  box(book,0.2,0.27,0.03,o.bookColor,0,0,0);
-  box(book,0.185,0.25,0.02,0xf2eee0,0,0,-0.012);
+  /* 손에 든 펼친 책: 표지는 바깥쪽, 흰 속지 면이 얼굴 쪽. 속지 면이 눈을 향하도록 위로 기울임 */
+  const book=new T.Group();book.position.set(0,0.52,0.49);book.rotation.x=BOOK_TILT;
+  box(book,0.30,0.24,0.025,o.bookColor,0,0,0);                     /* 표지 */
+  box(book,0.143,0.22,0.02,0xf8f6ef,-0.0745,0,-0.0125);           /* 왼쪽 속지 */
+  box(book,0.143,0.22,0.02,0xf8f6ef,0.0745,0,-0.0125);            /* 오른쪽 속지 */
+  box(book,0.008,0.22,0.021,0xcfc8b4,0,0,-0.0125);                /* 가운데 접힌 선 */
   book.visible=false;upper.add(book);
   g.scale.setScalar(o.scale);
   scene.add(g);
-  return {root:g,upper:upper,legs:legs,arms:arms,book:book,scale:o.scale};
+  return {root:g,upper:upper,head:head,legs:legs,arms:arms,book:book,scale:o.scale};
 }
 function randomLook(){
   const kid=Math.random()<0.2;
@@ -1924,10 +1931,13 @@ function posePerson(v,dt,t){
   r.arms.forEach(function(a,i){
     const sd=i?1:-1;
     let tx=sd*v.swing*0.9,tz=0;
-    if(v.arms==='read'){tx=-1.15;tz=-sd*0.384;}
+    if(v.arms==='read'){tx=-1.5;tz=-sd*0.243;}   /* 두 손이 책의 좌우 가장자리(x=±0.15)를 잡음 */
     else if(v.arms==='reach'){if(i===1){tx=-1.5;tz=-0.1;}else tx=-0.2;}
     a.rotation.x+=(tx-a.rotation.x)*k;a.rotation.z+=(tz-a.rotation.z)*k;
   });
+  /* 책을 들고 읽는 동안은 고개를 숙여 책의 흰 면을 바라봄 */
+  const hp=(v.book&&v.arms==='read')?READ_HEAD:0;
+  r.head.rotation.x+=(hp-r.head.rotation.x)*k;
   r.book.visible=v.book;
   r.book.rotation.z=Math.sin(t*0.5+v.ph)*0.03;
 }
@@ -1981,7 +1991,7 @@ function stepWalk(v,dt){
   }
   if(!v.path.length){v.swing=0;v.mode='turn';}
 }
-/* 걷기 → 서가를 향해 돌아섬 → 책을 꺼냄 → 약 30초 읽음 → 책을 꽂음 → 다른 서가로 */
+/* 걷기 → 서가를 향해 돌아섬 → 책을 꺼냄 → 약 15초 읽음 → 책을 꽂음 → 다른 서가로 */
 function stepWander(v,dt){
   v.swing=0;
   if(v.mode==='read'){
@@ -2003,7 +2013,7 @@ function stepWander(v,dt){
   }else if(v.mode==='reach'){
     v.t-=dt;
     if(v.t<0.7&&!v.book){v.book=true;v.arms='read';v.lean=0.12;}
-    if(v.t<=0){v.mode='read';v.t=29+Math.random()*3;}
+    if(v.t<=0){v.mode='read';v.t=14+Math.random()*2;}
   }
 }
 function placeOnSeat(v,seat){
@@ -2020,7 +2030,7 @@ function spawnVisitors(){
   plan.forEach(function(kind){
     const look=randomLook();
     const v={kind:kind,rig:null,x:0,z:0,yaw:0,sit:0,floor:0,lean:0.12,arms:'read',book:true,swing:0,
-      phase:Math.random()*6,ph:Math.random()*6,mode:'read',t:3+Math.random()*26,path:[],key:null,wait:0,goalYaw:0,
+      phase:Math.random()*6,ph:Math.random()*6,mode:'read',t:3+Math.random()*12,path:[],key:null,wait:0,goalYaw:0,
       scale:look.scale,col:{x:0,z:0,r:0.28}};
     if(kind==='sit'&&seats.length){
       v.rig=makePerson(look);placeOnSeat(v,seats.pop());
@@ -2084,7 +2094,7 @@ function update(dt,t){
     resolve();
     /* 달리기 키를 누른 채 실제로 빠르게 이동한 경우만 '뛰기'로 판단 */
     const running=isRunPressed()&&len>0.1&&dt>0&&Math.hypot(player.x-fromX,player.z-fromZ)/dt>3.6;
-    if(running)runTime+=dt;else{runTime=0;runLimit=1+Math.random();}
+    if(running)runTime+=dt;else{runTime=0;runLimit=0.3+Math.random()*0.7;}
     const sp=Math.hypot(player.vx,player.vz);
     player.bob+=sp*dt*2.1;
     camera.position.set(player.x,1.65+Math.sin(player.bob)*0.022*Math.min(1,sp/3),player.z);
