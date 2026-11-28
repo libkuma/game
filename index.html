@@ -1723,9 +1723,11 @@ canvas.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse')mo
 canvas.addEventListener('click',function(){
   if(!locked)return;
   if(state==='play')tryInteract({x:0,y:0});
-  else if(state==='help'){const b=vcursorTarget();if(b)b.click();}
+  else if(usesVCursor()){const b=vcursorTarget();if(b)b.click();}
 });
 
+/* 가상 커서를 쓰는 상태: 사서 선생님과 대화 중이거나, 추격에 잡혔을 때 */
+function usesVCursor(){return state==='help'||state==='scold';}
 /* ---- 가상 커서: 마우스를 고정한 채 사서 선생님의 대화창 버튼을 누름 ---- */
 const vcur={x:0,y:0,over:null};
 const vcurEl=document.createElement('div');
@@ -1738,7 +1740,7 @@ function vcursorTarget(){
   return b&&$('scold').contains(b)?b:null;
 }
 function drawVCursor(){
-  const show=locked&&state==='help';
+  const show=locked&&usesVCursor();
   vcurEl.style.display=show?'block':'none';
   vcurEl.style.transform='translate('+(vcur.x-2)+'px,'+(vcur.y-2)+'px)';
   const b=show?vcursorTarget():null;
@@ -1768,7 +1770,7 @@ document.addEventListener('pointerlockchange',function(){
 });
 document.addEventListener('mousemove',function(e){
   if(!locked)return;
-  if(state==='help'){
+  if(usesVCursor()){
     vcur.x=Math.max(0,Math.min(window.innerWidth-1,vcur.x+e.movementX));
     vcur.y=Math.max(0,Math.min(window.innerHeight-1,vcur.y+e.movementY));
     drawVCursor();return;
@@ -1897,7 +1899,7 @@ function pathLength(path){
   path.forEach(function(p){len+=Math.hypot(p.x-a.x,p.z-a.z);a=p;});
   return len;
 }
-const CHASE_BOOST=1.4;   /* 추격 속도 배율: 기존보다 0.4배(40%) 더 빠름 */
+const CHASE_BOOST=1.7;   /* 추격 속도 배율: 기존보다 0.7배(70%) 더 빠름 */
 function planCome(){
   const staff=inStaffArea();
   lib.path=(staff?[STAFF_EXIT]:[]).concat(findPath(staff?STAFF_EXIT:lib,player));
@@ -1918,7 +1920,8 @@ function catchPlayer(){
   state='scold';
   say(RUN_MSG);
   keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
-  if(document.pointerLockElement)document.exitPointerLock();
+  /* 마우스 고정은 풀지 않음 (고정 풀기는 Q). '네' 버튼은 가상 커서로 누름 */
+  centerVCursor();
   tipEl.hidden=true;canvas.style.cursor='default';
   talk();
 }
@@ -1957,6 +1960,7 @@ $('btnYes').addEventListener('click',function(){
   this.blur();
   $('scold').hidden=true;
   planBack();lib.mode='back';
+  refreshVCursor();
   state='play';keys.clear();canvas.style.cursor='grab';
 });
 /* ---- 사서 선생님께 말 걸기 ----
