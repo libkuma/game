@@ -532,7 +532,7 @@ body.touch .chev{padding:5px 10px}
 </div>
 <div id="mapbox" class="glass hud"><canvas id="map" width="216" height="168" aria-label="도서관 지도"></canvas></div>
 <div id="hint" class="hud">
-  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E · 사서 선생님 클릭 · Q 마우스 고정 풀기</span>
+  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E · 사서 선생님 클릭 · Q 마우스 고정 풀기/다시 고정</span>
   <span class="h-land">방향키로 이동·방향 전환 · 달리기는 ▲와 함께 · 책·사서 선생님을 탭</span>
   <span class="h-touch">왼쪽 아래를 끌어 이동 · 화면을 끌어 둘러보기 · 책·사서 선생님을 탭</span>
 </div>
@@ -567,7 +567,7 @@ body.touch .chev{padding:5px 10px}
       <dt>시점</dt><dd><span class="d-only"><kbd>A</kbd> <kbd>D</kbd> 또는 <kbd>←</kbd> <kbd>→</kbd> (마우스 드래그도 가능)</span><span class="t-only"><span class="t-port">화면을 끌기</span><span class="t-land">방향키 ◀ ▶ 또는 화면 끌기</span></span></dd>
       <dt class="d-only">달리기</dt><dd class="d-only"><kbd>Shift</kbd></dd>
       <dt>책 펼치기</dt><dd><span class="d-only">책을 클릭 또는 <kbd>E</kbd></span><span class="t-only">책을 탭</span></dd>
-      <dt class="d-only">고정 풀기</dt><dd class="d-only"><kbd>Q</kbd> (마우스 시점 고정 풀기. Chrome·Edge에서는 전체 화면으로 바뀌고 Esc를 짧게 눌러도 고정이 유지돼요)</dd>
+      <dt class="d-only">고정 전환</dt><dd class="d-only"><kbd>Q</kbd> (한 번 누르면 마우스 시점 고정 해제, 다시 누르면 고정. Chrome·Edge에서는 전체 화면으로 바뀌고 Esc를 짧게 눌러도 고정이 유지돼요)</dd>
       <dt class="d-only">창 모드</dt><dd class="d-only"><kbd>Esc</kbd> 길게 누르기 (전체 화면을 해제하고 창 모드로 전환)</dd>
     </dl>
     <p class="rotate-tip">
@@ -1618,8 +1618,13 @@ function currentNdc(){
 }
 
 window.addEventListener('keydown',function(e){
-  /* Q: 마우스 시점 고정 풀기 (e.code라서 한글 입력 상태에서도 동작) */
-  if(e.code==='KeyQ'&&document.pointerLockElement){e.preventDefault();document.exitPointerLock();return;}
+  /* Q: 누를 때마다 마우스 시점 고정 해제 ↔ 다시 고정 (e.code라서 한글 입력 상태에서도 동작)
+     다시 고정은 게임 중, 사서 선생님과 대화 중, 추격에 잡혔을 때만 */
+  if(e.code==='KeyQ'){
+    if(e.repeat)return;                       /* 길게 눌러도 한 번만 */
+    if(document.pointerLockElement){e.preventDefault();document.exitPointerLock();return;}
+    if((state==='play'||usesVCursor())&&!document.body.classList.contains('touch')){e.preventDefault();lockMouse(false);return;}
+  }
   if(state==='start'&&e.key==='Enter'&&e.target.id!=='btnStart'){startGame();return;}
   if(state==='quiz'){
     if(e.key==='Escape'){closeBook();return;}
@@ -1899,7 +1904,7 @@ function pathLength(path){
   path.forEach(function(p){len+=Math.hypot(p.x-a.x,p.z-a.z);a=p;});
   return len;
 }
-const CHASE_BOOST=1.4;   /* 추격 속도 배율: 기존보다 0.4배(40%) 더 빠름 */
+const CHASE_BOOST=1.4;   /* 추격 속도 배율: 원래 속도보다 40% 더 빠름 */
 function planCome(){
   const staff=inStaffArea();
   lib.path=(staff?[STAFF_EXIT]:[]).concat(findPath(staff?STAFF_EXIT:lib,player));
