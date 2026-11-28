@@ -101,11 +101,7 @@ body.touch .h-touch{display:inline}
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
 }
 .btn-float:hover{border-color:var(--accent)}
-#btnLock{
-  display:none;
-  right:max(16px,env(safe-area-inset-right,0px));
-  bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
-}
+#btnLock{display:none}
 body.is-play:not(.touch) #btnLock{display:block}
 body.touch #btnLock{display:none!important}
 body.locked #btnLock{opacity:.6}
@@ -447,14 +443,18 @@ body.touch .chev{padding:5px 10px}
   #start .btn.big{font-size:15px;padding:8px 24px}
 }
 /* ---------- 방문자 현황: 넓은 화면은 지도 왼쪽, 좁은 화면은 지도 바로 아래 ---------- */
-#visit{
-  position:fixed;z-index:10;padding:6px 14px;white-space:nowrap;font-size:14px;font-weight:700;
+#visitCol{
+  position:fixed;z-index:10;display:flex;flex-direction:column;align-items:stretch;gap:6px;
   top:calc(env(safe-area-inset-top,0px) + 12px);
   right:calc(max(16px,env(safe-area-inset-right,0px)) + 198px);
 }
+#visit{padding:6px 14px;white-space:nowrap;font-size:14px;font-weight:700}
+#visitCol #btnLock{position:static;text-align:center;white-space:nowrap}
 #visit b{color:var(--gold);font-variant-numeric:tabular-nums}
 @media (max-width:760px), (max-height:560px){
-  #visit{right:max(16px,env(safe-area-inset-right,0px));min-width:130px;padding:4px 8px;font-size:12.5px;text-align:center;top:calc(env(safe-area-inset-top,0px) + 122px)}
+  #visitCol{right:max(16px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 122px)}
+  #visit{min-width:130px;padding:4px 8px;font-size:12.5px;text-align:center}
+  #visitCol #btnLock{padding:5px 8px;font-size:12px}
 }
 /* 세로 휴대전화: 펼친 목록은 방문자 표시 아래에 */
 @media (max-width:700px) and (orientation:portrait){
@@ -463,7 +463,16 @@ body.touch .chev{padding:5px 10px}
   #mission.closed{z-index:11}
 }
 @media (orientation:landscape) and (max-height:560px){
-  #visit{min-width:110px;top:calc(env(safe-area-inset-top,0px) + 103px)}
+  #visitCol{top:calc(env(safe-area-inset-top,0px) + 103px)}
+  #visit{min-width:110px}
+}
+/* 마우스 사용 + 좁은 세로 창: 시점 고정 버튼이 방문자 표시 아래에 한 줄 더 있으므로 목록을 그만큼 내림 */
+@media (max-width:700px) and (orientation:portrait){
+  body:not(.touch) #mission:not(.closed){top:calc(env(safe-area-inset-top,0px) + 206px)}
+  body:not(.touch) #mList{max-height:calc(100vh - 326px);max-height:calc(100dvh - 326px)}
+}
+@media (max-width:355px) and (orientation:portrait){
+  body:not(.touch) #mission.closed{top:calc(env(safe-area-inset-top,0px) + 206px)}
 }
 /* 아주 좁은 세로 화면: 접은 목록도 방문자 표시 아래에 */
 @media (max-width:355px) and (orientation:portrait){
@@ -492,14 +501,16 @@ body.touch .chev{padding:5px 10px}
   <ul id="mList"></ul>
   <div class="m-foot">점수 <b id="mScore">0</b></div>
 </aside>
-<div id="visit" class="glass hud">도서관 방문자 수 : <b id="vCount">–</b>명</div>
+<div id="visitCol">
+  <div id="visit" class="glass hud">도서관 방문자 수 : <b id="vCount">–</b>명</div>
+  <button id="btnLock" class="btn-float" type="button">마우스 시점 고정</button>
+</div>
 <div id="mapbox" class="glass hud"><canvas id="map" width="216" height="168" aria-label="도서관 지도"></canvas></div>
 <div id="hint" class="hud">
   <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E</span>
   <span class="h-land">방향키로 이동·방향 전환 · 뛰기는 ▲와 함께 · 책을 탭</span>
   <span class="h-touch">왼쪽 아래를 끌어 이동 · 화면을 끌어 둘러보기 · 책을 탭</span>
 </div>
-<button id="btnLock" class="btn-float" type="button">마우스 시점 고정</button>
 <div id="joy" aria-hidden="true"><div class="knob"></div></div>
 <div id="pad" class="ctl" role="group" aria-label="방향키: 위아래는 이동, 좌우는 방향 전환">
   <div class="pad-cross">
