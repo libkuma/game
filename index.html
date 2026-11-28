@@ -531,7 +531,7 @@ body.touch .chev{padding:5px 10px}
 </div>
 <div id="mapbox" class="glass hud"><canvas id="map" width="216" height="168" aria-label="도서관 지도"></canvas></div>
 <div id="hint" class="hud">
-  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E · 사서 선생님 클릭</span>
+  <span class="h-desk">W·S 이동 · A·D 방향 전환 · Shift 달리기 · 책 클릭 또는 E · 사서 선생님 클릭 · Q 마우스 고정 풀기</span>
   <span class="h-land">방향키로 이동·방향 전환 · 달리기는 ▲와 함께 · 책·사서 선생님을 탭</span>
   <span class="h-touch">왼쪽 아래를 끌어 이동 · 화면을 끌어 둘러보기 · 책·사서 선생님을 탭</span>
 </div>
@@ -566,6 +566,7 @@ body.touch .chev{padding:5px 10px}
       <dt>시점</dt><dd><span class="d-only"><kbd>A</kbd> <kbd>D</kbd> 또는 <kbd>←</kbd> <kbd>→</kbd> (마우스 드래그도 가능)</span><span class="t-only"><span class="t-port">화면을 끌기</span><span class="t-land">방향키 ◀ ▶ 또는 화면 끌기</span></span></dd>
       <dt class="d-only">달리기</dt><dd class="d-only"><kbd>Shift</kbd></dd>
       <dt>책 펼치기</dt><dd><span class="d-only">책을 클릭 또는 <kbd>E</kbd></span><span class="t-only">책을 탭</span></dd>
+      <dt class="d-only">고정 풀기</dt><dd class="d-only"><kbd>Q</kbd> (마우스 시점 고정 풀기)</dd>
     </dl>
     <p class="rotate-tip">
       <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="19" width="26" height="15" rx="3"/><path d="M14 6c10-2 19 4 20 14"/><path d="M29.5 16.5l4.5 4.5 3.5-5.5"/></svg>
@@ -1587,6 +1588,8 @@ function currentNdc(){
 }
 
 window.addEventListener('keydown',function(e){
+  /* Q: 마우스 시점 고정 풀기 (e.code라서 한글 입력 상태에서도 동작) */
+  if(e.code==='KeyQ'&&document.pointerLockElement){e.preventDefault();document.exitPointerLock();return;}
   if(state==='start'&&e.key==='Enter'&&e.target.id!=='btnStart'){startGame();return;}
   if(state==='quiz'){
     if(e.key==='Escape'){closeBook();return;}
@@ -1929,7 +1932,7 @@ function startHelp(){
   const behind=behindLib();
   state='help';
   keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
-  /* 마우스 고정은 풀지 않음 (Esc를 눌러야 풀림). 메뉴는 가상 커서로 선택 */
+  /* 마우스 고정은 풀지 않음 (Q 또는 Esc를 눌러야 풀림). 메뉴는 가상 커서로 선택 */
   centerVCursor();
   tipEl.hidden=true;canvas.style.cursor='default';
   $('toast').classList.remove('show');
@@ -2536,7 +2539,7 @@ function startGame(){
   $('start').hidden=true;state='play';
   document.body.classList.add('is-play');
   player.pitch=0;
-  if(!document.body.classList.contains('touch'))lockMouse(true);   /* 마우스 기기는 처음부터 시점 고정 (Esc로 해제) */
+  if(!document.body.classList.contains('touch'))lockMouse(true);   /* 마우스 기기는 처음부터 시점 고정 (Q 또는 Esc로 해제) */
   renderMission();
   openMission();
   const h=$('hint');h.classList.remove('fade');
