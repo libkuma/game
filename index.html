@@ -361,7 +361,7 @@ body.touch .chev{padding:5px 10px}
 .keys .t-land{display:none}
 .h-land{display:none}
 
-/* ---------- 가로 화면용 게임 컨트롤러 (터치 기기) ---------- */
+/* ---------- 게임 컨트롤러 (터치 기기, 세로·가로 화면 공통) ---------- */
 .ctl{
   --pad:clamp(112px,36vmin,150px);
   display:none;position:fixed;z-index:13;padding:0;
@@ -389,12 +389,20 @@ body.touch .chev{padding:5px 10px}
 }
 #btnRun.on{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.4);filter:brightness(1.25)}
 
+body.is-play.touch .ctl{display:block}
+body.touch .keys .t-port{display:none}
+body.touch .keys .t-land{display:block}
+body.touch .h-touch{display:none}
+body.touch .h-land{display:inline}
+/* 세로 화면: 조작 안내와 사서 선생님 대화창은 컨트롤러 위에 표시 */
+@media (orientation:portrait){
+  body.touch #hint{bottom:calc(env(safe-area-inset-bottom,0px) + clamp(112px,36vmin,150px) + 28px);border-radius:12px;font-size:11.5px}
+  body.touch .scold{bottom:calc(env(safe-area-inset-bottom,0px) + clamp(112px,36vmin,150px) + 28px)}
+  /* 펼친 도서 목록은 컨트롤러를 가리지 않는 높이까지만 */
+  body.touch #mList{max-height:calc(100vh - clamp(112px,36vmin,150px) - 310px);max-height:calc(100dvh - clamp(112px,36vmin,150px) - 310px);min-height:70px}
+  body.touch .scold.wide{max-height:calc(100vh - clamp(112px,36vmin,150px) - 100px);max-height:calc(100dvh - clamp(112px,36vmin,150px) - 100px)}
+}
 @media (orientation:landscape){
-  body.is-play.touch .ctl{display:block}
-  body.touch .keys .t-port{display:none}
-  body.touch .keys .t-land{display:block}
-  body.touch .h-touch{display:none}
-  body.touch .h-land{display:inline}
   body.touch #hint{
     bottom:calc(env(safe-area-inset-bottom,0px) + 10px);border-radius:12px;font-size:11.5px;
     max-width:calc(100vw - 2 * clamp(112px,36vmin,150px) - 76px);
@@ -575,7 +583,7 @@ body.touch .chev{padding:5px 10px}
     </dl>
     <p class="rotate-tip">
       <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="19" width="26" height="15" rx="3"/><path d="M14 6c10-2 19 4 20 14"/><path d="M29.5 16.5l4.5 4.5 3.5-5.5"/></svg>
-      <span>휴대전화를 <b>가로로 돌려서</b>도 이용할 수 있어요. 가로 화면에는 방향키 컨트롤러와 달리기 버튼이 나와요.</span>
+      <span>휴대전화는 <b>세로와 가로 화면</b> 모두 이용할 수 있어요. 방향키 컨트롤러와 달리기 버튼이 나와요.</span>
     </p>
     <button id="btnStart" class="btn primary big" type="button">입장하기</button>
   </div>
