@@ -566,7 +566,7 @@ body.touch .chev{padding:5px 10px}
       <dt>시점</dt><dd><span class="d-only"><kbd>A</kbd> <kbd>D</kbd> 또는 <kbd>←</kbd> <kbd>→</kbd> (마우스 드래그도 가능)</span><span class="t-only"><span class="t-port">화면을 끌기</span><span class="t-land">방향키 ◀ ▶ 또는 화면 끌기</span></span></dd>
       <dt class="d-only">달리기</dt><dd class="d-only"><kbd>Shift</kbd></dd>
       <dt>책 펼치기</dt><dd><span class="d-only">책을 클릭 또는 <kbd>E</kbd></span><span class="t-only">책을 탭</span></dd>
-      <dt class="d-only">고정 풀기</dt><dd class="d-only"><kbd>Q</kbd> (마우스 시점 고정 풀기)</dd>
+      <dt class="d-only">고정 풀기</dt><dd class="d-only"><kbd>Q</kbd> (마우스 시점 고정 풀기. Chrome·Edge에서는 전체 화면으로 바뀌고 Esc를 짧게 눌러도 고정이 유지돼요)</dd>
     </dl>
     <p class="rotate-tip">
       <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="19" width="26" height="15" rx="3"/><path d="M14 6c10-2 19 4 20 14"/><path d="M29.5 16.5l4.5 4.5 3.5-5.5"/></svg>
@@ -1750,7 +1750,27 @@ document.addEventListener('mousemove',function(e){
 function lockMouse(quiet){
   const fail=function(){if(!quiet)toast('이 화면에서는 마우스 고정을 쓸 수 없어요. 드래그로 둘러보세요.');};
   try{const p=canvas.requestPointerLock();if(p&&p.catch)p.catch(fail);}catch(err){fail();}
+  holdEsc();   /* 마우스 고정을 먼저 요청한 뒤 전체 화면으로 전환 */
 }
+/* ---- Esc로 마우스 고정이 풀리지 않게 하기 ----
+   브라우저는 전체 화면 + 키보드 잠금(Keyboard Lock API) 상태에서만 Esc를 게임에 넘겨줌 (Chrome·Edge 등).
+   Esc를 길게 누르면 브라우저가 전체 화면을 끝냄. 고정만 풀 때는 Q */
+const canHoldEsc=!!(navigator.keyboard&&navigator.keyboard.lock&&document.documentElement.requestFullscreen)&&window.top===window;
+function lockEscKey(){
+  const p=navigator.keyboard.lock(['Escape']);
+  if(p&&p.catch)p.catch(function(){toast('Esc 잠금을 쓸 수 없어요. Esc를 누르면 마우스 고정이 풀려요.',4000);});
+}
+function holdEsc(){
+  if(!canHoldEsc||document.body.classList.contains('touch'))return;
+  if(document.fullscreenElement){lockEscKey();return;}
+  const p=document.documentElement.requestFullscreen();
+  if(p&&p.catch)p.catch(function(){});
+}
+document.addEventListener('fullscreenchange',function(){
+  if(!canHoldEsc)return;
+  if(document.fullscreenElement)lockEscKey();
+  else navigator.keyboard.unlock();
+});
 $('btnLock').addEventListener('click',function(){
   lockMouse(false);
 });
@@ -1932,7 +1952,7 @@ function startHelp(){
   const behind=behindLib();
   state='help';
   keys.clear();endJoy();resetPad();ptrs.clear();player.vx=player.vz=0;runTime=0;
-  /* 마우스 고정은 풀지 않음 (Q 또는 Esc를 눌러야 풀림). 메뉴는 가상 커서로 선택 */
+  /* 마우스 고정은 풀지 않음 (고정 풀기는 Q). 메뉴는 가상 커서로 선택 */
   centerVCursor();
   tipEl.hidden=true;canvas.style.cursor='default';
   $('toast').classList.remove('show');
@@ -2539,7 +2559,7 @@ function startGame(){
   $('start').hidden=true;state='play';
   document.body.classList.add('is-play');
   player.pitch=0;
-  if(!document.body.classList.contains('touch'))lockMouse(true);   /* 마우스 기기는 처음부터 시점 고정 (Q 또는 Esc로 해제) */
+  if(!document.body.classList.contains('touch'))lockMouse(true);   /* 마우스 기기는 처음부터 시점 고정 (Q로 해제) */
   renderMission();
   openMission();
   const h=$('hint');h.classList.remove('fade');
